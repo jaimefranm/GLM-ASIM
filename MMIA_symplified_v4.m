@@ -218,6 +218,7 @@ if exist('t_vectorL1')
     save('space_time', 'MMIA_space_time');
 
 end
+% Uncomment for use in Python
 %clearvars;
 %close all;
 %clear all;
