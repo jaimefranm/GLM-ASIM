@@ -1,0 +1,2 @@
+python goesaws.py -i 'glm' --start '09-01-2019-16:00' --end '09-01-2019-16:30' --dl -o 'path/to/download'
+

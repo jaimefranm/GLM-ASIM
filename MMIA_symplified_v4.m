@@ -9,13 +9,8 @@ end
 %%%%%%%%%%% Si se quiere probar este script por separado, indicar aquí
 %%%%%%%%%%% abajo el path a los archivos .cdf en la variable 'str'
 
-%str='/Users/jaimemorandominguez/Desktop/Pruebas_Python/MMIA_archivos/MMIA_dairy/20200610/';
-%str='/Users/jaimemorandominguez/Desktop/TFG/MMIA/Entrada_MMIA/181122/descarga_2021-04-25/';
-%str = '/Users/jaimemorandominguez/Desktop/Problems/MMIA_ERROR/20200712/';
-
-%str='C:\Users\Jesús\Downloads\20200924-20210915T214936Z-001\20200924\';
-%str = '/Users/jaimemorandominguez/Desktop/Final/MMIA_archivos/MMIA_dairy/20200807_7/';
 %str = '/home/lrg/Desktop/20200222_0/';
+str = '/Users/jaimemorandominguez/Desktop/20200222_0/';
 
 tresh_frame=100; % UMBRAL DE TRESHOLD PARA CADA FOTÓMETRO
 
@@ -68,11 +63,10 @@ while zz<=n_files
 
     % Corrected time
     t_corrected_l1=(str2num(datestr(corrected_datetime_level1(1,1),'SS.FFF'))-str2num(datestr(frame_time_phot(1,1),'SS.FFF'))) +  str2num(datestr(frame_time_phot(1,:),'SS.FFF'))
-    hour = datestr(raw_datetime(1),'HH:MM:SS.FFF')(1:2)
-    minute = datestr(raw_datetime(1),'HH:MM:SS.FFF')(4:5)
+    complete_hour = datestr(corrected_datetime_level1(1,1),'HH:MM:SS.FFF');
+    hour = str2double(complete_hour(1:2));
+    minute = str2double(complete_hour(4:5));
     
-
-
     if zz == 1
         min_t = t_corrected_l1(1);
         max_t = t_corrected_l1(end);
@@ -140,24 +134,6 @@ while zz<=n_files
             t_asim_corr(i,1)= t_asim_corr(i-1,1)+sample_r;
         end
 
-        
-        % DEBO MIRAR EL t_corrected_level 1 para el siguiente fichero ya
-        % que debido al sample rate, es posible que se traslape con el
-        % t_corrected del siguiente fichero. 
-%         if zz>=2 && (t_asim_end_prev-t_ini_asim_corr(zz)<=0.02)  
-%             disp('Traslapo')
-%             t_asim_corr(1)=t_asim_end_prev; 
-%             for i=2:trigger_length
-%                 t_asim_corr(i,1)= t_asim_corr(i-1,1)+sample_r;
-%             end
-%         else
-%             for i=2:trigger_length
-%                 t_asim_corr(i,1)= t_asim_corr(i-1,1)+sample_r;
-%             end
-%             t_asim_end_prev=t_asim_corr(end,1); 
-%         end
-%         
-%         
         t_vectorL1=[t_vector_tmp;t_asim_corr];
         t_vector_tmp=t_vectorL1;
         
@@ -175,37 +151,6 @@ while zz<=n_files
         CHU2_pixel_latitude;
         CHU2_pixel_longitude;
     end
-    
-    
-    % Fin del ciclo con solo CHU!
-%         for frame=1:length(CHU1Data_exists)
-            
-%             if CHU1Data_exists(frame)==1 && CHU2Data_exists(frame)==1
-%                 indiim=frame;
-%                 
-%                 %Reconstruct Images cut:
-%                 dim_row=chu_maximum_row(indiim)-chu_minimum_row(indiim)+1;
-%                 dim_column=chu_maximum_column(indiim)-chu_minimum_column(indiim)+1;
-%                        % GRÁFICO DE LOS CHU
-%                 CHU1Data=CHU1_photon_flux;
-%                 CHU2Data=CHU2_photon_flux;
-%                 CHU1_pixel_longitude;
-%                 CHU1_pixel_latitude;
-%                 CHU2_pixel_latitude;
-%                 CHU2_pixel_longitude;
-%                 A_CHU1=reshape(CHU1Data(indiim,:),dim_column,dim_row);
-%                 A_CHU2=reshape(CHU2Data(indiim,:),dim_column,dim_row);
-%                 lat_chu1=reshape(CHU1_pixel_latitude(indiim,:),dim_column,dim_row);
-%                 lon_chu1=reshape(CHU1_pixel_longitude(indiim,:),dim_column,dim_row);
-%                 
-%                 lat_chu2=reshape(CHU2_pixel_latitude(indiim,:),dim_column,dim_row);
-%                 lon_chu2=reshape(CHU2_pixel_longitude(indiim,:),dim_column,dim_row);
-%                 
-%                 imagenFOV1=zeros(1026,1056);
-%                 imagenFOV2=zeros(1026,1056);
-%                 close all
-%             end
-%         end
         zz=zz+1;  %% Finaliza concatenación de los fiecheros MMIA
 end
 
@@ -214,8 +159,8 @@ if exist('t_vectorL1')
     MMIA_all(:,2)=PHOT3Data_all_tmp';
     save('MMIA_data','MMIA_all');
     
-    space_time = [min_lat, max_lat, min_lon, max_lon, min_t, max_t]
-    save('space_time', 'MMIA_space_time');
+    space_time = [min_lat, max_lat, min_lon, max_lon, min_t, max_t];
+    save('MMIA_space_time', 'space_time');
 
 end
 % Uncomment for use in Python
