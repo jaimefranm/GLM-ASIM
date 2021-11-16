@@ -1,3 +1,11 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% This script reads a directory of .cdf MMIA files and extracts the data
+% for photometer 3 (time and signal vectors) as well as ISS position and 
+% initial and final corrected times.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % SET cdf MATLAB patch
 if isunix
     %addpath '/usr/local/MATLAB/matlab_cdf380_patch-64'
@@ -65,19 +73,25 @@ while zz<=n_files
     t_corrected_l1=(str2num(datestr(corrected_datetime_level1(1,1),'SS.FFF'))-str2num(datestr(frame_time_phot(1,1),'SS.FFF'))) +  str2num(datestr(frame_time_phot(1,:),'SS.FFF'))
     complete_hour = datestr(corrected_datetime_level1(1,1),'HH:MM:SS.FFF');
     hour = str2double(complete_hour(1:2));
-    hour_s = hour*3600;
+    hour_s = hour*3600
     minute = str2double(complete_hour(4:5));
-    minute_s = minute*60;
+    minute_s = minute*60
+
+    current_min_time = hour_s + minute_s + t_corrected_l1(1);
+    current_max_time = hour_s + minute_s + t_corrected_l1(end);
+    if t_corrected_l1(end) < t_corrected_l1(1)
+        current_max_time = current_max_time + 60;
+    end
     
     if zz == 1
-        min_t = t_corrected_l1(1);
-        max_t = t_corrected_l1(end);
+        min_t = current_min_time;
+        max_t = current_max_time;
     else
-        if t_corrected_l1(1) < min_t
-            min_t = t_corrected_l1(1);
+        if current_min_time < min_t
+            min_t = current_min_time;
         end
-        if latitude(1) > max_t
-            max_t = t_corrected_l1(end);
+        if current_max_time > max_t
+            max_t = current_max_time;
         end
     end
 
@@ -161,11 +175,11 @@ if exist('t_vectorL1')
     MMIA_all(:,2)=PHOT3Data_all_tmp';
     save('MMIA_data','MMIA_all');
     
-    space_time = [min_lat, max_lat, min_lon, max_lon, min_t, max_t];
+    space_time = [min_lat, max_lat, min_lon, max_lon, min_t, max_t]
     save('MMIA_space_time', 'space_time');
 
 end
-% Uncomment for use in Python
-%clearvars;
-%close all;
-%clear all;
+
+clearvars;
+close all;
+clear all;
