@@ -65,7 +65,9 @@ while zz<=n_files
     t_corrected_l1=(str2num(datestr(corrected_datetime_level1(1,1),'SS.FFF'))-str2num(datestr(frame_time_phot(1,1),'SS.FFF'))) +  str2num(datestr(frame_time_phot(1,:),'SS.FFF'))
     complete_hour = datestr(corrected_datetime_level1(1,1),'HH:MM:SS.FFF');
     hour = str2double(complete_hour(1:2));
+    hour_s = hour*3600;
     minute = str2double(complete_hour(4:5));
+    minute_s = minute*60;
     
     if zz == 1
         min_t = t_corrected_l1(1);
