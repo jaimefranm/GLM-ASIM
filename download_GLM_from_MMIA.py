@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 This script gets a directory containing MMIA snippets and automatically
-downloads corresponding GLM .nc files from AWS servers.
-
-
+downloads corresponding GLM .nc files from Google Cloud servers.
 
 Notes:
     1. No need to daily order GLM files in main_TFG.py
@@ -17,6 +15,7 @@ Notes:
 
 @author: Jaime F. Moran Dominguez (jaime.francisco.moran@upc.edu)
 """
+
 import os
 import scipy.io as sio
 
@@ -27,9 +26,9 @@ MMIA_info_path = '/home/lrg/Desktop/MMIA_test/snippet_info'
 GLM_ordered_dir = '/home/lrg/Desktop/MMIA_test/GLM_snippets'
 
 
-def get_GLM_datafiles_from_AWS(MMIA_info_path, GLM_ordered_dir):
+def get_GLM_datafiles_from_GOOGLE(MMIA_info_path, GLM_ordered_dir):
 
-    print('Starting GLM download from AWS for every MMIA snippet...')
+    print('Starting GLM download from Google Cloud for every MMIA snippet...')
     print(' ')
     # Getting all snippets in the directory
     with os.scandir(MMIA_info_path) as snippets:
@@ -49,6 +48,3 @@ def get_GLM_datafiles_from_AWS(MMIA_info_path, GLM_ordered_dir):
 
         # Conversion from MMIA data to DD-MM-YYYY-HH:mm
 
-
-
-        os.system("python goesaws.py -i 'glm' --start '" + 09-01-2019-16:00 + "' --end '" + 09-01-2019-16:30 + "' --dl -o " + GLM_ordered_dir)
