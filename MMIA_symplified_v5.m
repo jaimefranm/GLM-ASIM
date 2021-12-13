@@ -17,9 +17,7 @@ end
 %%%%%%%%%%% Si se quiere probar este script por separado, indicar aqu�
 %%%%%%%%%%% abajo el path a los archivos .cdf en la variable 'str'
 
-%str = '/home/lrg/Desktop/20200222_0/';
-
-tresh_frame=100; % UMBRAL DE TRESHOLD PARA CADA FOT�METRO
+tresh_frame=100; % UMBRAL DE TRESHOLD PARA CADA FOTOMETRO
 
 folder_name=(str);
 files=dir(fullfile(folder_name,'*.cdf'));
@@ -69,30 +67,30 @@ while zz<=n_files
     end
 
     % Corrected time
-    t_corrected_l1=(str2num(datestr(corrected_datetime_level1(1,1),'SS.FFF'))-str2num(datestr(frame_time_phot(1,1),'SS.FFF'))) +  str2num(datestr(frame_time_phot(1,:),'SS.FFF'))
-    complete_hour = datestr(corrected_datetime_level1(1,1),'HH:MM:SS.FFF');
-    hour = str2double(complete_hour(1:2));
-    hour_s = hour*3600
-    minute = str2double(complete_hour(4:5));
-    minute_s = minute*60
+    %t_corrected_l1=(str2num(datestr(corrected_datetime_level1(1,1),'SS.FFF'))-str2num(datestr(frame_time_phot(1,1),'SS.FFF'))) +  str2num(datestr(frame_time_phot(1,:),'SS.FFF'));
+    %complete_hour = datestr(corrected_datetime_level1(1,1),'HH:MM:SS.FFF');
+    %hour = str2double(complete_hour(1:2));
+    %hour_s = hour*3600
+    %minute = str2double(complete_hour(4:5));
+    %minute_s = minute*60
 
-    current_min_time = hour_s + minute_s + t_corrected_l1(1);
-    current_max_time = hour_s + minute_s + t_corrected_l1(end);
-    if t_corrected_l1(end) < t_corrected_l1(1)
-        current_max_time = current_max_time + 60;
-    end
+    %current_min_time = hour_s + minute_s + t_corrected_l1(1);
+    %current_max_time = hour_s + minute_s + t_corrected_l1(end);
+    %if t_corrected_l1(end) < t_corrected_l1(1)
+    %    current_max_time = current_max_time + 60;
+    %end
 
-    if zz == 1
-        min_t = current_min_time;
-        max_t = current_max_time;
-    else
-        if current_min_time < min_t
-            min_t = current_min_time;
-        end
-        if current_max_time > max_t
-            max_t = current_max_time;
-        end
-    end
+    %if zz == 1
+    %    min_t = current_min_time;
+    %    max_t = current_max_time;
+    %else
+    %    if current_min_time < min_t
+    %        min_t = current_min_time;
+    %    end
+    %    if current_max_time > max_t
+    %        max_t = current_max_time;
+    %    end
+    %end
 
     %Frame en el que hay un trigger con MXGS
     frame=1;%find(MXGSTrigger);
@@ -171,14 +169,15 @@ end
 
 if exist('t_vectorL1')
     MMIA_all(:,1)=t_vectorL1;
-    MMIA_all(:,2)=PHOT3Data_all_tmp';
+    MMIA_all(:,2)=PHOT1Data_all_tmp';
+    MMIA_all(:,3)=PHOT2Data_all_tmp';
+    MMIA_all(:,4)=PHOT3Data_all_tmp';
     save('MMIA_data','MMIA_all');
 
-    space_time = [min_lat, max_lat, min_lon, max_lon, min_t, max_t]
+    space_time = [min_lat, max_lat, min_lon, max_lon, min(t_vectorL1), max(t_vectorL1)];
     save('MMIA_space_time', 'space_time');
-
 end
 
-%clearvars;
-%close all;
-%clear all;
+clearvars;
+close all;
+clear all;

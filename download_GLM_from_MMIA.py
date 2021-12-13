@@ -20,10 +20,11 @@ import os
 import scipy.io as sio
 
 # Path where MMIA snippet info is located
-MMIA_info_path = '/home/lrg/Desktop/MMIA_test/snippet_info'
+#MMIA_info_path = '/home/lrg/Desktop/MMIA_test/snippet_info'
+MMIA_info_path = '/home/lrg/Desktop/MMIA_test/snippet_info/'
 
 # Path where GLM snippet datafiles will be located
-GLM_ordered_dir = '/home/lrg/Desktop/MMIA_test/GLM_snippets'
+#GLM_ordered_dir = '/home/lrg/Desktop/MMIA_test/GLM_snippets'
 
 
 def get_GLM_datafiles_from_GOOGLE(MMIA_info_path, GLM_ordered_dir):
