@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Dec  9 20:15:38 2021
+Queda por hacer:
+    1. Mirar bien cómo hacer una función del código de descarga de Jesús
+    2. Implementar la función
+    3. Mover cada archivo descargado directamente a un nuevo directorio por trigger
+    4. Ya se podrá sacar un .txt por cada trigger
 
 @author: jaimemorandominguez
 """
@@ -12,6 +16,7 @@ import os
 import datetime
 import matlab.engine
 import scipy.io as sio
+import re
 
 #path_to_mmia_files = '/media/lrg/012EE6107EB7CB6B/mmia_20'
 #ssd_path = '/media/lrg/012EE6107EB7CB6B'
@@ -157,9 +162,4 @@ def extract_trigger_info(ssd_path, trigger_info):
 create_MMIA_trigger_directories(matches, trigger_info, path_to_mmia_files, ssd_path)
         
 [mmia_raw, trigger_limits] = extract_trigger_info(ssd_path, trigger_info)
-        
-        
-        
-        
-        
         
