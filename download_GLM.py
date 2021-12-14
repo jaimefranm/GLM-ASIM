@@ -6,6 +6,9 @@ Queda por hacer:
     2. Implementar la función
     3. Mover cada archivo descargado directamente a un nuevo directorio por trigger
     4. Ya se podrá sacar un .txt por cada trigger
+    5. Cuidado con poder subir datos de los .mat a Python directamente sin
+        tener que extraer los .mat (función aparte que sólo lea el directorio
+        y suba los datos de data e info)
 
 @author: jaimemorandominguez
 """
@@ -17,15 +20,21 @@ import datetime
 import matlab.engine
 import scipy.io as sio
 import re
+from google.cloud import storage
 
+# PC UPC
 #path_to_mmia_files = '/media/lrg/012EE6107EB7CB6B/mmia_20'
-#ssd_path = '/media/lrg/012EE6107EB7CB6B'
-path_to_mmia_files = '/Users/jaimemorandominguez/Desktop/Final/MMIA_archivos/cdf'
-ssd_path = '/Users/jaimemorandominguez/Desktop/test_descarga_GLM'
+path_to_mmia_files = '/home/lrg/Desktop/test_cdf'
+ssd_path = '/media/lrg/012EE6107EB7CB6B'
+
+# LOCAL mac
+#path_to_mmia_files = '/Users/jaimemorandominguez/Desktop/Final/MMIA_archivos/cdf'
+#path_to_mmia_files = '/Users/jaimemorandominguez/Desktop/test_cdf'
+#ssd_path = '/Users/jaimemorandominguez/Desktop/test_descarga_GLM'
+
+
+
 trigger_length = 4
-
-
-
 
 
 def get_MMIA_triggers(path_to_mmia_files, trigger_length):
@@ -92,6 +101,8 @@ def get_MMIA_triggers(path_to_mmia_files, trigger_length):
             if mmia_data[i,1] - pivoting_time <= trigger_length:   # Same trigger
                 file_list.append(mmia_files[i])
                 day = datetime.datetime.strptime(str(mmia_data[i,1])[0:7], "%Y%j").strftime("%Y%m%d")
+                if i == (len(mmia_files)-1):
+                    trigger_info[matches.index(day)].append(file_list)
             
             else:   # New trigger
                 trigger_info[matches.index(day)].append(file_list)
@@ -103,63 +114,180 @@ def get_MMIA_triggers(path_to_mmia_files, trigger_length):
     print('Trigger generation done!\n')
     return [matches, trigger_info]
         
-def create_MMIA_trigger_directories(matches, trigger_info, path_to_mmia_files, ssd_path):
+def create_MMIA_trigger_directories(matches, trigger_filenames, path_to_mmia_files, ssd_path):
     
     print('Copying MMIA files into trigger directories...\n')
     os.system('mkdir ' + ssd_path + '/mmia_dirs')
-    for i in range(len(trigger_info)):
-        for j in range(len(trigger_info[i])):
+    for i in range(len(trigger_filenames)):
+        for j in range(len(trigger_filenames[i])):
             # Creating the trigger directory
             os.system('mkdir ' + ssd_path + '/mmia_dirs/' + matches[i] + '_' + str(j))
-            for k in range(len(trigger_info[i][j])):
-                file_name = trigger_info[i][j][k]
+            for k in range(len(trigger_filenames[i][j])):
+                file_name = trigger_filenames[i][j][k]
                 # Moving the current file to its trigger directory
                 os.system('cp ' + path_to_mmia_files + '/' + file_name + ' ' + ssd_path + '/mmia_dirs/' + matches[i] + '_' + str(j))
     
     print('MMIA classification done!\n')
     
-def extract_trigger_info(ssd_path, trigger_info):
+def extract_trigger_info(ssd_path, trigger_filenames, matches):
     
     mmia_mat_files_path = ssd_path + '/mmia_mat'
     
     os.system('mkdir ' + mmia_mat_files_path)
     
-    trigger_limits = [None] * len(trigger_info)
-    mmia_raw = [None] * len(trigger_info)
+    trigger_limits = [None] * len(trigger_filenames)
+    mmia_raw = [None] * len(trigger_filenames)
     
-    for i in range(len(trigger_info)):
+    for i in range(len(trigger_filenames)):
         
         # Creating the template for trigger data and info
-        triggers = [None] * len(trigger_info[i])
-        trigger_limits[i] = triggers
-        mmia_raw[i] = triggers
+        triggers1 = [None] * len(trigger_filenames[i])
+        triggers2 = [None] * len(trigger_filenames[i])
+        trigger_limits[i] = triggers1
+        mmia_raw[i] = triggers2
         
         # Extracting data for every trigger
-        for j in range(len(trigger_info[i])):
+        for j in range(len(trigger_filenames[i])):
             
-            print('Starting the MatLab engine and extracting data from .cdf files for day %d, trigger %d / %d...' % (int(matches[i]), j, len(trigger_info[i])))
+            print('Starting the MatLab engine and extracting data from .cdf files for day %d (%d / %d), trigger %d / %d...' % (int(matches[i]), i+1, len(matches), j, len(trigger_filenames[i])))
             eng = matlab.engine.start_matlab()
             path = ssd_path + '/mmia_dirs/' + matches[i] + '_' + str(j) + '/'
             eng.workspace['str'] = path
             eng.MMIA_symplified_v5(nargout=0)
             eng.quit()
             wd = os.getcwd()
-            os.system('mv '+wd+'/MMIA_data.mat ' + mmia_mat_files_path+'/'+matches[i]+'_' + str(j) +'_data.mat')
-            os.system('mv '+wd+'/MMIA_space_time.mat ' + mmia_mat_files_path+'/'+matches[i]+'_' + str(j) +'_info.mat')
             
-            # Filling mmia raw data and trigger info variables
-            data_mat = sio.loadmat(mmia_mat_files_path+'/'+matches[i]+'_' + str(j) +'_data.mat')
-            info_mat = sio.loadmat(mmia_mat_files_path+'/'+matches[i]+'_' + str(j) +'_info.mat')
-            current_data = data_mat.get('MMIA_all')
-            current_info = info_mat.get('space_time')
-            mmia_raw[i][j] = current_data
-            trigger_limits[i][j] = current_info
+            with os.scandir(wd) as files:
+                files = [file.name for file in files if file.is_file() and file.name.endswith('.mat')]
+            
+            if len(files) != 0:
+            
+                os.system('mv '+wd+'/MMIA_data.mat ' + mmia_mat_files_path+'/'+matches[i]+'_' + str(j) +'_data.mat')
+                os.system('mv '+wd+'/MMIA_space_time.mat ' + mmia_mat_files_path+'/'+matches[i]+'_' + str(j) +'_info.mat')
+            
+                # Filling mmia raw data and trigger info variables
+                data_mat = sio.loadmat(mmia_mat_files_path+'/'+matches[i]+'_' + str(j) +'_data.mat')
+                info_mat = sio.loadmat(mmia_mat_files_path+'/'+matches[i]+'_' + str(j) +'_info.mat')
+                current_data = data_mat.get('MMIA_all')
+                current_info = info_mat.get('space_time')
+                mmia_raw[i][j] = current_data
+                trigger_limits[i][j] = current_info
+            else:
+                print('No MMIA data could be extracted for day %s trigger %d' % (matches[i], j))
+        print(' ')  # For separating dates
     
     return [mmia_raw, trigger_limits]
-        
-[matches, trigger_info] = get_MMIA_triggers(path_to_mmia_files, trigger_length)
 
-create_MMIA_trigger_directories(matches, trigger_info, path_to_mmia_files, ssd_path)
+def download_GLM(ssd_path, trigger_filenames, mmia_raw, time_margin):
+    
+    print("Downloading GLM's .nc files from Google Cloud Storage...")
+    
+    path_to_downloaded_glm_nc = ssd_path + '/GLM_downloaded_nc_files'
+    
+    os.system('mkdir ' + path_to_downloaded_glm_nc)
+    
+    for i in range(len(trigger_filenames)):
+        for j in range(len(trigger_filenames[i])):
+            
+            current_trigger_download_path = path_to_downloaded_glm_nc + '/' + matches[i] + '_' + str(j)
+            os.system('mkdir ' + current_trigger_download_path)
+            
+            date = trigger_filenames[i][j][0][50:60]
+            year = date[0:4]
+            day_year = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%j")
+            
+            download_glm_from_google(ssd_path, year, day_year, mmia_raw[i][j][0,0]-time_margin, mmia_raw[i][j][-1,0]+time_margin)
+            
+            with os.scandir(ssd_path) as files:
+                files = [file.name for file in files if file.is_file() and file.name.endswith('.nc')]
+            
+            for k in range(len(files)):
+                os.system('mv ' + ssd_path + '/' + files[k] + ' ' + current_trigger_download_path)
+                
+    print('Download done! Your .nc files can be accessed per trigger at %s' % path_to_downloaded_glm_nc)
+            
+def download_glm_from_google(ssd_path, year, day_year, t_ini, t_end):
+    
+    hour_ini = str(int(t_ini // 3600))
+    if len(hour_ini) == 1:
+        hour_ini = '0'+hour_ini
+    min_ini = str(int((t_ini/3600 - t_ini//3600) * 60))
+    mseg_ini = '000'
+    
+    
+    hour_end = str(int(t_end // 3600))
+    if len(hour_end) == 1:
+        hour_end = '0'+hour_end
+    min_end = str(int((t_end/3600 - t_end//3600) * 60))
+    mseg_end = '999'
+    
+    
+    GOOGLE_APPLICATION_CREDENTIALS = '/Users/jaimemorandominguez/Desktop/INIREC/balma-280811-99e25d9f2ab1.json'
+    # Instantiates a client
+    storage_client = storage.Client()
+    # Get GCS bucket
+    bucket_name='gcp-public-data-goes-16'
+    # GLM-L2-LCFA/ + AÑO + DAY OF YEAR + HORA (sólo hora entera)
+    prefix='GLM-L2-LCFA/'+year+'/'+day_year+'/'+hour_ini # Objeto
+    delimiter=','
+    # Get blobs in bucket (including all subdirectories)
+    bucket = storage_client.get_bucket(bucket_name)
+    blobs = storage_client.list_blobs(bucket_name, prefix=prefix, delimiter=delimiter)
+    # print("Blobs:")
+    glm_name=''
+    for blob in blobs:
+        glm_name +=(blob.name+'\n') # Ficheros .nc GLM en "String" para la hora completa de búsqueda
         
-[mmia_raw, trigger_limits] = extract_trigger_info(ssd_path, trigger_info)
+    glm_name_list = glm_name.splitlines() # "Nombre de los ficheros String pero en list"
+        
+    # String list permite identificar por cada "línea" como si se tratase de un array.
+        
+    # Find la fecha inicial de los ficheros.
+    date_files= re.findall(r'_s(.*)_e\S', glm_name)
+        
+    # Convierte la fecha de string a entero o flotante
+    date_files_float = list(map(int, date_files))
+        
+    # Fecha de búsqueda, primero en string para concatenar y posterior en int
+    # AÑO + DIA DEL AÑO + HORA + MINUTO + mseg ??
+    find_ini = year + day_year + hour_ini + min_ini + mseg_ini
+    find_end = year + day_year + hour_end + min_end + mseg_end
+        
+    int_find_ini=int(find_ini)
+    int_find_end=int(find_end)
+        
+    # Posiciones de los ficheros según las fechas de búsqueda
+    date_in = np.array([date_files_float])
+    pos_in=(np.where(np.logical_and(date_in>=int_find_ini, date_in<=int_find_end)))
+        
+    # Seleciona los ficheros de ls búsqueda y los almacena en destination_file_name
+    for x in range(len(pos_in[1])):
+        # file=bucket_name+'/'+glm_name_list[pos_in[1][x]]
+        file=glm_name_list[pos_in[1][x]]
+        # HAY UN BUG CUANDO LOS ALMACENO CON NOMBRES DIFERENTES AL ORIGINAL
+        destination_file_name=ssd_path+'/'+str(glm_name_list[pos_in[1][x]]).replace("/","_")
+        blob=bucket.blob(file)
+        blob.download_to_filename(destination_file_name)
+        print("Blob {} downloaded to {}.".format(file, destination_file_name))
+
+
+
+
+
+
+
+
+
+
+
+
+time_margin = 0.5 #[s]
+
+[matches, trigger_filenames] = get_MMIA_triggers(path_to_mmia_files, trigger_length)
+
+create_MMIA_trigger_directories(matches, trigger_filenames, path_to_mmia_files, ssd_path)
+        
+[mmia_raw, trigger_limits] = extract_trigger_info(ssd_path, trigger_filenames, matches)
+
+download_GLM(ssd_path, trigger_filenames, mmia_raw, time_margin)
         
