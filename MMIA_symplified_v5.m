@@ -17,7 +17,7 @@ end
 %%%%%%%%%%% Si se quiere probar este script por separado, indicar aqu�
 %%%%%%%%%%% abajo el path a los archivos .cdf en la variable 'str'
 
-%str = '/Users/jaimemorandominguez/Desktop/20200223_32/';
+%str = '/Users/jaimemorandominguez/Desktop/20200710_6/';
 
 tresh_frame=100; % UMBRAL DE TRESHOLD PARA CADA FOTOMETRO
 

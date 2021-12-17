@@ -21,6 +21,7 @@ import matlab.engine
 import scipy.io as sio
 import re
 from google.cloud import storage
+import math
 
 # PC UPC
 #path_to_mmia_files = '/media/lrg/012EE6107EB7CB6B/mmia_20'
@@ -45,26 +46,26 @@ def get_MMIA_triggers(path_to_mmia_files, trigger_length):
 
     print('Generating triggers from MMIA files...\n')
     ######### Ordering MMIA files by name in ascending time #########
-    
+
     # Moving away all files with size 0
     with os.scandir(path_to_mmia_files) as files:
         files = [file.name for file in files if file.is_file() and file.name.endswith('.cdf')]
-        
+
     files_size = [
         (f,os.stat(os.path.join(path_to_mmia_files, f)).st_size)
         for f in files
     ]
     path_to_no_size = path_to_mmia_files + '/no_size'
     os.system('mkdir '+ path_to_no_size)
-    
+
     for i in range(len(files_size)):
         if files_size[i][1] == 0:
             os.system('mv ' + path_to_mmia_files + '/' + files_size[i][0] + ' ' + path_to_no_size)
-        
-        
+
+
     with os.scandir(path_to_mmia_files) as files:
         files = [file.name for file in files if file.is_file() and file.name.endswith('.cdf')]
-    
+
     mmia_files_data = np.zeros((len(files),2))
 
     for i in range(len(files)):
@@ -159,7 +160,7 @@ def extract_trigger_info(ssd_path, trigger_filenames, matches):
     trigger_limits = [None] * len(trigger_filenames)
     mmia_raw = [None] * len(trigger_filenames)
 
-    for i in range(len(trigger_filenames)):
+    for i in range(150,len(trigger_filenames)): # ------------------------------- CAMBIAAAAAAAR
 
         # Creating the template for trigger data and info
         triggers1 = [None] * len(trigger_filenames[i])
