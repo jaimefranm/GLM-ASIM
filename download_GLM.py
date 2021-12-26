@@ -28,6 +28,9 @@ import math
 #path_to_mmia_files = '/home/lrg/Desktop/test_cdf'
 #ssd_path = '/media/lrg/012EE6107EB7CB6B'
 
+path_to_mmia_files = '/media/lrg/mmia_20'
+ssd_path = '/media/lrg'
+
 # LOCAL mac
 
 # For testing
@@ -36,10 +39,12 @@ import math
 #ssd_path = '/Users/jaimemorandominguez/Desktop/test_descarga_GLM'
 
 # For doing something
-path_to_mmia_files = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
-ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
+#path_to_mmia_files = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
+#ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
 
 trigger_length = 2 # [s]
+pre_extracted_MMIA = True
+pre_downloaded_GLM = False
 
 
 def get_MMIA_triggers(path_to_mmia_files, trigger_length):
@@ -320,23 +325,32 @@ def upload_MMIA_mats(ssd_path, trigger_filenames, matches):
         # Filling mmia raw data and trigger info variables
 
         data_date = data_files[i][0:8]
-        data_trigger = data_files[i]
-        data_mat = sio.loadmat(mmia_mat_files_path+'/'+matches[i]+'_' + str(j) +'_data.mat')
-        info_mat = sio.loadmat(mmia_mat_files_path+'/'+matches[i]+'_' + str(j) +'_info.mat')
+        
+        if len(data_files[i]) == 19: # Trigger number is 1 digit
+            data_trigger = data_files[i][9:10]
+        else:
+            data_trigger = data_files[i][9:11]
+
+        data_mat = sio.loadmat(mmia_mat_files_path+'/'+data_date+'_' + data_trigger +'_data.mat')
+        info_mat = sio.loadmat(mmia_mat_files_path+'/'+data_date+'_' + data_trigger +'_info.mat')
         current_data = data_mat.get('MMIA_all')
         current_info = info_mat.get('space_time')
-        mmia_raw[i][j] = current_data
-        trigger_limits[i][j] = current_info
+        mmia_raw[matches.index(data_date)][int(data_trigger)] = current_data
+        trigger_limits[matches.index(data_date)][int(data_trigger)] = current_info
 
-
-
-
+    return [mmia_raw, trigger_limits]
 
 
 [matches, trigger_filenames] = get_MMIA_triggers(path_to_mmia_files, trigger_length)
 
-create_MMIA_trigger_directories(matches, trigger_filenames, path_to_mmia_files, ssd_path)
+if pre_extracted_MMIA == False:
+    
+    create_MMIA_trigger_directories(matches, trigger_filenames, path_to_mmia_files, ssd_path)
 
-[mmia_raw, trigger_limits] = extract_trigger_info(ssd_path, trigger_filenames, matches)
+    [mmia_raw, trigger_limits] = extract_trigger_info(ssd_path, trigger_filenames, matches)
 
-#download_GLM(ssd_path, trigger_filenames, mmia_raw)
+else:
+    [mmia_raw, trigger_limits] = upload_MMIA_mats(ssd_path, trigger_filenames, matches)
+    
+if pre_downloaded_GLM == False:
+    download_GLM(ssd_path, trigger_filenames, mmia_raw)
