@@ -28,8 +28,8 @@ import math
 #path_to_mmia_files = '/home/lrg/Desktop/test_cdf'
 #ssd_path = '/media/lrg/012EE6107EB7CB6B'
 
-path_to_mmia_files = '/media/lrg/mmia_20'
-ssd_path = '/media/lrg'
+#path_to_mmia_files = '/media/lrg/mmia_20'
+#ssd_path = '/media/lrg'
 
 # LOCAL mac
 
@@ -39,8 +39,8 @@ ssd_path = '/media/lrg'
 #ssd_path = '/Users/jaimemorandominguez/Desktop/test_descarga_GLM'
 
 # For doing something
-#path_to_mmia_files = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
-#ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
+path_to_mmia_files = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
+ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
 
 trigger_length = 2 # [s]
 pre_extracted_MMIA = True
