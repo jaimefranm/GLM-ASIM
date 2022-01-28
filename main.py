@@ -27,7 +27,10 @@ show_plots = False
 pre_xc = False
 
 # Boolean variable for pre-detected peaks
-pre_detected_peaks = False
+pre_detected_peaks = True
+
+# Boolean variable for pre-studied peaks
+pre_studied_peaks = False
 
 # Boolean variable for pre-oredered triggers in directories
 pre_trigger_directories = True
@@ -91,6 +94,8 @@ xcorr_bin = ssd_path + '/xcorr_bin'
 xcorr_figures_path = ssd_path + '/xcorr_figures'
 peaks_bin = ssd_path + '/peaks_bin'
 peaks_figures_path = ssd_path + '/peaks_figures'
+statistics_path = ssd_path + '/stats_bin'
+statistics_figures_path = ssd_path + '/stats_figures'
 
 GLM_ordered_dir = ssd_path + '/glm_downl_nc_files'
 GLM_ordered_outputs = ssd_path + '/glm_txt'
@@ -113,6 +118,7 @@ if first_execution == True:
     pre_conditioned_MMIA = False
     pre_xc = False
     pre_detected_peaks = False
+    pre_studied_peaks = False
 
     [matches, trigger_filenames] = TFG.get_MMIA_triggers(MMIA_files_path, trigger_length)
     
@@ -345,7 +351,7 @@ for day in range(len(matches)):
         print(' ')
         
     else:
-        print('GLM and MMIA peaks for day %d were pre-detected. Uploading from %s/%s.pckl...' % (matches[day], peaks_bin, matches[day]))
+        print('GLM and MMIA peaks for day %s were pre-detected. Uploading from %s/%s.pckl...' % (matches[day], peaks_bin, matches[day]))
         f = open(peaks_bin + '/' + matches[day] + '.pckl', 'rb')
         [GLM_peaks, MMIA_peaks, matching_peaks] = pickle.load(f)
         f.close()

@@ -14,6 +14,7 @@ from scipy.signal import find_peaks
 from scipy.signal import lfilter
 from scipy.signal import correlate
 from google.cloud import storage
+import pickle
 import library as TFG
 
 def get_MMIA_triggers(path_to_mmia_files, trigger_length):
@@ -1225,6 +1226,7 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
     '''
 
     print('Starting cross-correlation of snippets and syncronization of signals...')
+    print(' ')
 
     # Creation of new lists for daily GLM and MMIA cross-correlated data
     GLM_xcorr = [None] * len(GLM_snippets)
@@ -1326,9 +1328,8 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
             
         else:
             print('Date %d trigger %d / %d was pre-avoided for lack of GLM and MMIA data' % (int(matches[current_day]), j, len(GLM_xcorr_norm)))
-                
-        print(' ')
-        
+            
+    print(' ')
     print('All triggers checked!')
     print(' ')
     return [GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, delays]
@@ -1627,7 +1628,7 @@ def get_peak_matches(GLM_xcorr, GLM_xcorr_norm, MMIA_xcorr, MMIA_xcorr_norm, GLM
         # If data was successfully correlated and with 3 or more peaks (condition imposed before)
         if type(GLM_peaks[j]) == np.ndarray and type(MMIA_peaks[j]) == np.ndarray:
             
-            print('Matching peaks for date %s trigger %d...' % (matches[current_day], j))
+            print('Matching peaks for date %s trigger %d / %d...' % (matches[current_day], j, len(GLM_xcorr)))
             
             # Assuring all the arrays are of int type
             
@@ -1944,3 +1945,41 @@ def study_delays(delays, GLM_xcorr, MMIA_xcorr, show_plots):
     print(' ')
     
     return [snippet_counter, avg_all, std_all, avg_negative, std_negative, avg_positive, std_positive, len(MMIA_delays), len(GLM_delays), len(no_delays)]
+
+def merge_days(matches, bin_path, filename_end_to_merge):
+    # La idea de la funcion es generar una matrix de datos independiente de
+    # los datos de la matrix (delays, numero de muestras...)
+    
+    # Para ello los datos deben ser guardados por dia en binarios de antemano!
+    
+    # Generation of the blank datatable
+    matrix = [None] * len(matches)
+    
+    # If there is just one possible name type in bin_path
+    if filename_end_to_merge == 'no_type':
+        with os.scandir(bin_path) as files:
+            files = [file.name for file in files if file.is_file() and file.name.endswith('.pckl')]
+    else: # Multiple namings in bin_path
+        with os.scandir(bin_path) as files:
+            files = [file.name for file in files if file.is_file() and file.name.endswith(filename_end_to_merge + '.pckl')]
+    
+    for i in range(len(files)):
+        
+        # Get positioning in 'matrix'
+        day = files[i][0:8]
+        pos_in_matches = matches.index(day)
+        
+        # Upload contents of the binary into 'matrix'
+        if filename_end_to_merge == 'no_type':
+            f = open(bin_path + '/' + day + '.pckl', 'rb')
+            day_info_vector = pickle.load(f)
+            f.close()
+        else: # Multiple namings in bin_path
+            f = open(bin_path + '/' + day + '_' + filename_end_to_merge + '.pckl', 'rb')
+            day_info_vector = pickle.load(f)
+            f.close()
+        
+        matrix[pos_in_matches] = day_info_vector
+    
+    return matrix
+
