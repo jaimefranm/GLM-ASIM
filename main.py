@@ -6,7 +6,17 @@ import os
 # Just for plot presentation in LaTeX Style (slows the program)
 #plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
 
+# TODO: Meter Xcorr dentro de un while en el que si el delay supera un límite elimine samples por un lado y vuelva a hacer la xcorr
+'''
+delay[j] == 100000
+while delay[j] > 10000 (?):
+    xcorr...
+    delay[j] = lo que de
+    if delay[j] > 10000:
+        crop_signal
+'''
 
+# TODO: Generar un .txt con todos los resultados
 
 '''
 ###################################################
@@ -30,19 +40,19 @@ pre_xc = False
 pre_detected_peaks = True
 
 # Boolean variable for pre-studied peaks
-pre_studied_peaks = False
+pre_studied_peaks = True
 
 # Boolean variable for pre-oredered triggers in directories
 pre_trigger_directories = True
 
 # Path to Hard Disk (with all MMIA files and where to store all files)
-#ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
-ssd_path = '/Users/jaimemorandominguez/Desktop/test_descarga_GLM'
+ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
+#ssd_path = '/Users/jaimemorandominguez/Desktop/test_descarga_GLM'
 #ssd_path = '/media/lrg'
 
 # Path where MMIA's .cdf files are located
-#MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
-MMIA_files_path = '/Users/jaimemorandominguez/Desktop/test_cdf'
+MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
+#MMIA_files_path = '/Users/jaimemorandominguez/Desktop/test_cdf'
 #MMIA_files_path = '/media/lrg/mmia_20'
 
 
@@ -94,7 +104,7 @@ xcorr_bin = ssd_path + '/xcorr_bin'
 xcorr_figures_path = ssd_path + '/xcorr_figures'
 peaks_bin = ssd_path + '/peaks_bin'
 peaks_figures_path = ssd_path + '/peaks_figures'
-statistics_path = ssd_path + '/stats_bin'
+statistics_bin = ssd_path + '/stats_bin'
 statistics_figures_path = ssd_path + '/stats_figures'
 
 GLM_ordered_dir = ssd_path + '/glm_downl_nc_files'
@@ -274,6 +284,9 @@ for day in range(len(matches)):
         
         [GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, delays] = TFG.cross_correlate_GLM_MMIA(GLM_data, MMIA_filtered, GLM_norm, MMIA_norm, matches, show_plots, day, xcorr_figures_path)
         
+        # Calculating some values for further use
+        [GLM_avg, MMIA_avg, GLM_std, MMIA_std] = TFG.get_ministats(GLM_xcorr, MMIA_xcorr)
+        
         show_plots = False
         
         del GLM_data
@@ -285,15 +298,38 @@ for day in range(len(matches)):
         print('Saving cross-correlated data for day %s...' % matches[day])
         if day == 0:
             os.system('mkdir ' + xcorr_bin)
+            os.system('mkdir ' + statistics_bin)
         
         # Saving correlated signals
         f = open(xcorr_bin + '/' + matches[day] + '_signals.pckl', 'wb')
         pickle.dump([GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, delays], f)
         f.close()
         
-        # Saving delays sepparately for further statistics ease
-        f = open(xcorr_bin + '/' + matches[day] + '_delays.pckl', 'wb')
+        # Saving results in different binaries to make easier further use
+        
+        # Saving delays
+        f = open(statistics_bin + '/' + matches[day] + '_delays.pckl', 'wb')
         pickle.dump(delays, f)
+        f.close()
+        
+        # Saving GLM_avg
+        f = open(statistics_bin + '/' + matches[day] + '_glm_avg.pckl', 'wb')
+        pickle.dump(GLM_avg, f)
+        f.close()
+        
+        # Saving MMIA_avg
+        f = open(statistics_bin + '/' + matches[day] + '_mmia_avg.pckl', 'wb')
+        pickle.dump(MMIA_avg, f)
+        f.close()
+        
+        # Saving GLM_std
+        f = open(statistics_bin + '/' + matches[day] + '_glm_std.pckl', 'wb')
+        pickle.dump(GLM_std, f)
+        f.close()
+        
+        # Saving MMIA_std
+        f = open(statistics_bin + '/' + matches[day] + '_mmia_std.pckl', 'wb')
+        pickle.dump(MMIA_std, f)
         f.close()
         
         print('Done!\n')
@@ -305,12 +341,13 @@ for day in range(len(matches)):
         f = open(xcorr_bin + '/' + matches[day] + '_signals.pckl', 'rb')
         [GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm] = pickle.load(f)
         f.close()
-        
+        '''
         # Uploading delays
-        f = open(xcorr_bin + '/' + matches[day] + '_delays.pckl', 'rb')
-        delays = pickle.load(f)
+        f = open(statistics_path + '/' + matches[day] + '_stats.pckl', 'rb')
+        [delays, GLM_avg, MMIA_avg, GLM_std, MMIA_std] = pickle.load(f)
         f.close()
         print('Done!\n')
+        '''
 
 
     ########### PEAK DETECTION AND COMPARISON ###########
@@ -336,40 +373,53 @@ for day in range(len(matches)):
         matching_peaks = TFG.get_peak_matches(GLM_xcorr, GLM_xcorr_norm, MMIA_xcorr, MMIA_xcorr_norm, GLM_peaks, MMIA_peaks, show_plots, matches, day, match_figs_path)
         show_plots = False
         
-        del GLM_xcorr
-        del MMIA_xcorr
-        del GLM_xcorr_norm
-        del MMIA_xcorr_norm
-        
         print('Saving peak positions for day %s...' % matches[day])
         if day == 0:
             os.system('mkdir ' + peaks_bin)
-        f = open(peaks_bin + '/' + matches[day] + '.pckl', 'wb')
-        pickle.dump([GLM_peaks, MMIA_peaks, matching_peaks], f)
+        
+        # Saving results in different binaries to make easier further use
+        
+        # Saving GLM_peaks
+        f = open(peaks_bin + '/' + matches[day] + '_glm.pckl', 'wb')
+        pickle.dump(GLM_peaks, f)
         f.close()
+        
+        # Saving MMIA_peaks
+        f = open(peaks_bin + '/' + matches[day] + '_mmia.pckl', 'wb')
+        pickle.dump(MMIA_peaks, f)
+        f.close()
+        
+        # Saving matching_peaks
+        f = open(peaks_bin + '/' + matches[day] + '_matching.pckl', 'wb')
+        pickle.dump(matching_peaks, f)
+        f.close()
+        
         print('Done!')
         print(' ')
-        
+    '''    
     else:
         print('GLM and MMIA peaks for day %s were pre-detected. Uploading from %s/%s.pckl...' % (matches[day], peaks_bin, matches[day]))
         f = open(peaks_bin + '/' + matches[day] + '.pckl', 'rb')
         [GLM_peaks, MMIA_peaks, matching_peaks] = pickle.load(f)
         f.close()
         print('Done!\n')
-        
-        del GLM_xcorr
-        del GLM_xcorr_norm
-        del MMIA_xcorr
-        del MMIA_xcorr_norm
+    '''
     
+    del GLM_xcorr
+    del GLM_xcorr_norm
+    del MMIA_xcorr
+    del MMIA_xcorr_norm
+    
+del trigger_filenames
 
-    
-    
-    del GLM_peaks
-    del MMIA_peaks
-    del matching_peaks
-    
-    '''
-    # Getting delay statistics
-    [total_snippets, avg_all, std_all, avg_MMIA_delay, std_MMIA_delay, avg_GLM_delay, std_GLM_delay, MMIA_delays, GLM_delays, no_delays] = TFG.study_delays(delays, GLM_xcorr, MMIA_xcorr, show_plots)
-    '''
+
+
+########### OUTPUTTING VALUABLE STATS ###########
+
+
+# Getting delay statistics
+
+[total_snippets, avg_all, std_all, avg_MMIA_delay, std_MMIA_delay, avg_GLM_delay, std_GLM_delay, MMIA_delays, GLM_delays, no_delays] = TFG.study_delays(delays, GLM_xcorr, MMIA_xcorr, show_plots)
+
+more_statistics(peaks_bin)
+

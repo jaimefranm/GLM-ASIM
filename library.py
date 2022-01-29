@@ -1983,3 +1983,41 @@ def merge_days(matches, bin_path, filename_end_to_merge):
     
     return matrix
 
+def get_ministats(GLM_xcorr, MMIA_xcorr):
+    
+    # Generation of lists
+    GLM_avg = [None] * len(GLM_xcorr)
+    MMIA_avg = [None] * len(MMIA_xcorr)
+    GLM_std = [None] * len(GLM_xcorr)
+    MMIA_std = [None] * len(MMIA_xcorr)
+    
+    for j in range(len(GLM_xcorr)):
+        
+        GLM_avg[j] = np.average(GLM_xcorr[j][:,1])
+        MMIA_avg[j] = np.average(GLM_xcorr[j][:,1])
+        GLM_std[j] = np.std(GLM_xcorr[j][:,1])
+        MMIA_std[j] = np.std(GLM_xcorr[j][:,1])
+    
+    return [GLM_avg, MMIA_avg, GLM_std, MMIA_std]
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
