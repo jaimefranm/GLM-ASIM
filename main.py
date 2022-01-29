@@ -5,9 +5,9 @@ import os
 
 # Just for plot presentation in LaTeX Style (slows the program)
 #plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
-
-# TODO: Meter Xcorr dentro de un while en el que si el delay supera un límite elimine samples por un lado y vuelva a hacer la xcorr
 '''
+# TODO: Meter Xcorr dentro de un while en el que si el delay supera un límite elimine samples por un lado y vuelva a hacer la xcorr
+
 delay[j] == 100000
 while delay[j] > 10000 (?):
     xcorr...
@@ -15,8 +15,6 @@ while delay[j] > 10000 (?):
     if delay[j] > 10000:
         crop_signal
 '''
-
-# TODO: Generar un .txt con todos los resultados
 
 '''
 ###################################################
@@ -37,22 +35,22 @@ show_plots = False
 pre_xc = False
 
 # Boolean variable for pre-detected peaks
-pre_detected_peaks = True
+pre_detected_peaks = False
 
 # Boolean variable for pre-studied peaks
-pre_studied_peaks = True
+pre_studied_peaks = False
 
 # Boolean variable for pre-oredered triggers in directories
 pre_trigger_directories = True
 
 # Path to Hard Disk (with all MMIA files and where to store all files)
-ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
-#ssd_path = '/Users/jaimemorandominguez/Desktop/test_descarga_GLM'
+#ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
+ssd_path = '/Users/jaimemorandominguez/Desktop/test_descarga_GLM'
 #ssd_path = '/media/lrg'
 
 # Path where MMIA's .cdf files are located
-MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
-#MMIA_files_path = '/Users/jaimemorandominguez/Desktop/test_cdf'
+#MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
+MMIA_files_path = '/Users/jaimemorandominguez/Desktop/test_cdf'
 #MMIA_files_path = '/media/lrg/mmia_20'
 
 
@@ -334,6 +332,12 @@ for day in range(len(matches)):
         
         print('Done!\n')
         
+        del delays
+        del GLM_avg
+        del MMIA_avg
+        del GLM_std
+        del MMIA_std
+        
     else:
         print('GLM and MMIA data for day %s was pre-correlated. Uploading from %s/%s.pckl...' % (matches[day], xcorr_bin, matches[day]))
         
@@ -396,6 +400,10 @@ for day in range(len(matches)):
         
         print('Done!')
         print(' ')
+        
+        del GLM_peaks
+        del MMIA_peaks
+        del matching_peaks
     '''    
     else:
         print('GLM and MMIA peaks for day %s were pre-detected. Uploading from %s/%s.pckl...' % (matches[day], peaks_bin, matches[day]))
@@ -419,7 +427,11 @@ del trigger_filenames
 
 # Getting delay statistics
 
-[total_snippets, avg_all, std_all, avg_MMIA_delay, std_MMIA_delay, avg_GLM_delay, std_GLM_delay, MMIA_delays, GLM_delays, no_delays] = TFG.study_delays(delays, GLM_xcorr, MMIA_xcorr, show_plots)
+# Making necessary directories
+os.system('mkdir ' + statistics_figures_path)
 
-more_statistics(peaks_bin)
+show_plots = True
+TFG.study_delays(statistics_bin, show_plots, statistics_figures_path, matches, ssd_path)
 
+TFG.more_statistics(peaks_bin, matches, ssd_path)
+show_plots = False

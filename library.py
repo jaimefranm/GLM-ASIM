@@ -1992,32 +1992,301 @@ def get_ministats(GLM_xcorr, MMIA_xcorr):
     MMIA_std = [None] * len(MMIA_xcorr)
     
     for j in range(len(GLM_xcorr)):
-        
-        GLM_avg[j] = np.average(GLM_xcorr[j][:,1])
-        MMIA_avg[j] = np.average(GLM_xcorr[j][:,1])
-        GLM_std[j] = np.std(GLM_xcorr[j][:,1])
-        MMIA_std[j] = np.std(GLM_xcorr[j][:,1])
+        if type(GLM_xcorr[j]) == np.ndarray:
+            GLM_avg[j] = np.average(GLM_xcorr[j][:,1])
+            MMIA_avg[j] = np.average(GLM_xcorr[j][:,1])
+            GLM_std[j] = np.std(GLM_xcorr[j][:,1])
+            MMIA_std[j] = np.std(GLM_xcorr[j][:,1])
     
     return [GLM_avg, MMIA_avg, GLM_std, MMIA_std]
     
+def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, ssd_path):
+    '''
+    This function computes the average delay of GLM with respect to MMIA,
+    both attending absolute values and real values.
+    '''
+    print('Computing delay statistics...')
+    
+    # Generating necessary global matrices
+    
+    delays = TFG.merge_days(matches, statistics_bin, 'delays')
+    glm_avg = TFG.merge_days(matches, statistics_bin, 'glm_avg')
+    mmia_avg = TFG.merge_days(matches, statistics_bin, 'mmia_avg')
+    glm_std = TFG.merge_days(matches, statistics_bin, 'glm_std')
+    mmia_std = TFG.merge_days(matches, statistics_bin, 'mmia_std')
+
+    # Initializing variables
+    valid_trigger_counter = 0
+    delay_list = []
+    MMIA_delays_list = []
+    GLM_delays_list = []
+    no_delays_list = []
+    trigger_counter = 0
+    
+    for i in range(len(delays)):
+        for j in range(len(delays[i])):
+            trigger_counter = trigger_counter + 1
+            if type(delays[i][j]) == int:
+                valid_trigger_counter = valid_trigger_counter + 1
+                delay_list.append(delays[i][j])
+                if delays[i][j] < 0:
+                    MMIA_delays_list.append(delays[i][j])
+                elif delays[i][j] > 0:
+                    GLM_delays_list.append(delays[i][j])
+                else:
+                    no_delays_list.append(delays[i][j])
+
+    
+    all_delays = np.zeros((len(delay_list),1))
+    all_delays[:,0] = delay_list[:]
+    if len(all_delays) != 0:
+        avg_all = np.average(all_delays)
+        std_all = np.std(all_delays)
+    
+    
+    MMIA_delays = np.zeros((len(MMIA_delays_list),1))
+    MMIA_delays[:,0] = MMIA_delays_list[:]
+    if len(MMIA_delays) != 0:
+        avg_negative = np.average(MMIA_delays)
+        std_negative = np.std(MMIA_delays)
+        
+    # (GLM delays is really MMIA sends early)
+    
+    GLM_delays = np.zeros((len(GLM_delays_list),1))
+    GLM_delays[:,0] = GLM_delays_list[:]
+    if len(GLM_delays) != 0:
+        avg_positive = np.average(GLM_delays)
+        std_positive = np.std(GLM_delays)
+    
+
+    no_delays = np.zeros((len(no_delays_list),1))
+    no_delays[:,0] = no_delays_list[:]
+    
+    valid_triggers = len(MMIA_delays) + len(GLM_delays) + len(no_delays)
+    
+    # Checking relationship between delay and signal average energy
+    
+    GLM_delay_signal = np.zeros((len(GLM_delays),3))
+    MMIA_delay_signal = np.zeros((len(MMIA_delays),3))
+    GLM_counter = 0
+    MMIA_counter = 0
+    
+    for i in range(len(delays)):
+        for j in range(len(delays[i])):
+            if type(delays[i][j]) == int:
+                if delays[i][j] > 0: # MMIA signal anticipates
+                    GLM_delay_signal[GLM_counter,0] = delays[i][j] # Delay for that snippet
+                    GLM_delay_signal[GLM_counter,1] = glm_avg[i][j] # Average GLM energy for that snippet
+                    GLM_delay_signal[GLM_counter,2] = glm_std[i][j] # Std deviation of GLM energy for that snippet
+                    GLM_counter = GLM_counter + 1
+                elif delays[i][j] < 0: # MMIA signal delays
+                    MMIA_delay_signal[MMIA_counter,0] = delays[i][j] # Delay for that snippet
+                    MMIA_delay_signal[MMIA_counter,1] = mmia_avg[i][j] # Average MMIA energy for that snippet
+                    MMIA_delay_signal[MMIA_counter,2] = mmia_std[i][j] # Std deviation of MMIA energy for that snippet
+                    MMIA_counter = MMIA_counter + 1
     
     
     
+    print('Done!')
+    print('Writing results into ' + ssd_path + '/RESULTS.txt...')
+    # Saving results into a .txt
+    f =  open(ssd_path + '/RESULTS.txt', 'w')
+    f.write('******** RESULTS ********')
+    f.write('\n')
+    f.write('\n')
+    f.write('\n')
+    f.write('* TRIGGER INFO:')
+    f.write('\n')
+    f.write('    --> Total number of triggers processed: %d\n' % trigger_counter)
+    f.write('    --> Number of valid triggers: %d\n' % valid_trigger_counter)
+    f.write('    --> Percentage of valid over total triggers: %s%%\n' % str(valid_trigger_counter/trigger_counter * 100))
+    f.write('\n')
+    f.write('\n')
+    f.write('* DELAY INFO:')
+    f.write('\n')
+    f.write('    --> Average delay in samples: %s +- %s\n' % (str(avg_all), str(std_all)))
+    f.write('    --> Average delay in seconds: %s +- %s\n' % (str(avg_all*0.00001), str(std_all*0.00001)))
+    f.write('    --> Number of MMIA delays: %d (%s%%)\n' % (len(MMIA_delays), str(len(MMIA_delays)/valid_triggers*100)))
+    f.write('    --> Average MMIA delay in samples: %s +- %s\n' % (str(avg_negative), str(std_negative)))
+    f.write('    --> Average MMIA delay in seconds: %s +- %s\n' % (str(avg_negative*0.00001), str(std_negative*0.00001)))
+    f.write('    --> Number of MMIA anticipations: %d (%s%%)\n' % (len(GLM_delays), str(len(GLM_delays)/valid_triggers*100)))
+    f.write('    --> Average MMIA anticipation in samples: %s +- %s\n' % (str(avg_positive), str(std_positive)))
+    f.write('    --> Average MMIA anticipation in seconds: %s +- %s\n' % (str(avg_positive*0.00001), str(std_positive*0.00001)))
+    f.write('    --> Number of no delays: %d (%s%%)\n' % (len(no_delays), str(len(no_delays)/valid_triggers*100)))
+    f.close()
+    print('Done!\n')
     
     
+    if show_plots == 1:
+        # Good snippets vs total snippets
+        labels = ['Valid snippets', 'Non valid snippets']
+        colors = ['mediumaquamarine','lightcoral']
+        sizes = [valid_triggers, trigger_counter-valid_triggers]
+        fig1, ax1 = plt.subplots()
+        ax1.pie(sizes, labels=labels, autopct='%1.2f%%', shadow=False, startangle=90, colors=colors)
+        ax1.axis('equal')
+        #plt.show()
+        plt.savefig(statistics_figures_path + '/good_vs_total_triggers.pdf')
+        # Clear the current axes
+        plt.cla() 
+        # Clear the current figure
+        plt.clf() 
+        # Closes all the figure windows
+        plt.close('all')
+        
+        # MMIA delays vs GLM delays vs No delays
+        labels = ['MMIA delayed', 'MMIA anticipated', 'No delay']
+        colors = ['darksalmon','slategrey','black']
+        sizes = [len(MMIA_delays), len(GLM_delays), len(no_delays)]
+        fig1, ax1 = plt.subplots()
+        ax1.pie(sizes, labels=labels, autopct='%1.2f%%', shadow=False, startangle=90, colors=colors)
+        ax1.axis('equal')
+        #plt.show()
+        plt.savefig(statistics_figures_path + '/MMIA_vs_GLM_vs_no_delays.pdf')
+        # Clear the current axes
+        plt.cla() 
+        # Clear the current figure
+        plt.clf() 
+        # Closes all the figure windows
+        plt.close('all')
+        
+        # Average in delays
+        fig = plt.figure(dpi=800)
+        ax = fig.add_axes([0,0,1,1])
+        langs = ['Avg. Delay', 'Avg. MMIA Delay', 'Avg. MMIA Anticipation']
+        data = [avg_all*0.00001, avg_negative*0.00001, avg_positive*0.00001]
+        plt.grid('on')
+        colors = ['tab:blue', 'darksalmon', 'slategrey']
+        ax.set_ylabel('Delay [s]')
+        ax.bar(langs,data, color=colors, yerr=[std_all*0.00001,std_negative*0.00001,std_positive*0.00001])
+        #plt.show()
+        plt.savefig(statistics_figures_path + '/avg_delays.pdf')
+        # Clear the current axes
+        plt.cla() 
+        # Clear the current figure
+        plt.clf() 
+        # Closes all the figure windows
+        plt.close('all')
+        
+        # GLM delay vs GLM avg energy
+        plt.figure()
+        plt.scatter(GLM_delay_signal[:,1]*0.00001, GLM_delay_signal[:,0]*0.00001, color='black', marker='x')
+        plt.xlabel('GLM trigger average radiance [J]')
+        plt.ylabel('Trigger delay [s]')
+        plt.grid('on')
+        #plt.show()
+        plt.savefig(statistics_figures_path + '/glm_delay_vs_glm_avg_energy.pdf')
+        # Clear the current axes
+        plt.cla() 
+        # Clear the current figure
+        plt.clf() 
+        # Closes all the figure windows
+        plt.close('all')
+        
+        # MMIA delay vs MMIA avg energy
+        plt.figure()
+        plt.scatter(MMIA_delay_signal[:,1]*0.00001, MMIA_delay_signal[:,0]*0.00001, color='r', marker='x')
+        plt.xlabel(r'MMIA trigger average irradiance $\left[\dfrac{\mu W}{m^2}\right]$')
+        plt.ylabel('Trigger delay [s]')
+        plt.grid('on')
+        #plt.show()
+        plt.savefig(statistics_figures_path + '/mmia_delay_vs_mmia_avg_energy.pdf')
+        # Clear the current axes
+        plt.cla() 
+        # Clear the current figure
+        plt.clf() 
+        # Closes all the figure windows
+        plt.close('all')
+        
+        # GLM delay vs GLM std deviation in energy
+        plt.figure()
+        plt.scatter(GLM_delay_signal[:,2]*0.00001, GLM_delay_signal[:,0]*0.00001, color='black', marker='x')
+        plt.xlabel("GLM snippet's radiance stantard deviation [J]")
+        plt.ylabel('Trigger delay [s]')
+        plt.grid('on')
+        #plt.show()
+        plt.savefig(statistics_figures_path + '/glm_delay_vs_glm_std_energy.pdf')
+        # Clear the current axes
+        plt.cla() 
+        # Clear the current figure
+        plt.clf() 
+        # Closes all the figure windows
+        plt.close('all')
+        
+        # MMIA delay vs MMIA std deviation in energy
+        plt.figure()
+        plt.scatter(MMIA_delay_signal[:,2]*0.00001, MMIA_delay_signal[:,0]*0.00001, color='r', marker='x')
+        plt.xlabel(r"MMIA trigger's irradiance stantard deviation $\left[\dfrac{\mu W}{m^2}\right]$")
+        plt.ylabel('Trigger delay [s]')
+        plt.grid('on')
+        #plt.show()
+        plt.savefig(statistics_figures_path + '/mmia_delay_vs_mmia_std_energy.pdf')
+        # Clear the current axes
+        plt.cla() 
+        # Clear the current figure
+        plt.clf() 
+        # Closes all the figure windows
+        plt.close('all')
+                     
+    print('Done')
+    print(' ')
+
+def more_statistics(peaks_bin, matches, ssd_path):
     
+    print('Computing peak statistics...')
     
+    # Generating necessary global matrices
+    GLM_peaks = TFG.merge_days(matches, peaks_bin, 'glm')
+    MMIA_peaks = TFG.merge_days(matches, peaks_bin, 'mmia')
+    matching_peaks = TFG.merge_days(matches, peaks_bin, 'matching')
     
+    # Setting variables to study
+    counter = 0
+    sum_rel_GLM = 0 # en mmia/todos
+    sum_rel_MMIA = 0 # en glm/todos
+    sum_GLM_peaks = 0 # total peaks
+    sum_GLM_MMIA_peaks = 0
+    sum_MMIA_peaks = 0
     
+    for i in range(len(GLM_peaks)):
+        for j in range(len(GLM_peaks[i])):
+            if type(matching_peaks[i][j]) == list:
+                
+                counter = counter+1
+                
+                # Matched vs Total Peaks for every instrument
+                sum_rel_GLM = sum_rel_GLM + len(matching_peaks[i][j][0])/len(GLM_peaks[i][j])
+                sum_rel_MMIA = sum_rel_MMIA + len(matching_peaks[i][j][1])/len(MMIA_peaks[i][j])
+                
+                # Total peaks of every instrument
+                sum_GLM_peaks = sum_GLM_peaks + len(GLM_peaks[i][j])
+                sum_MMIA_peaks = sum_MMIA_peaks + len(MMIA_peaks[i][j])
+                
+                # Total matched peaks
+                sum_GLM_MMIA_peaks = sum_GLM_MMIA_peaks + len(matching_peaks[i][j][0])
     
+    avg_GLM_rel = sum_rel_GLM/counter   # Average matched vs total GLM peaks per trigger
+    avg_MMIA_rel = sum_rel_MMIA/counter # Average matched vs total MMIA peaks per trigger
     
+    avg_GLM_peaks = sum_GLM_peaks/counter   # Average found GLM peaks per trigger
+    avg_MMIA_peaks = sum_MMIA_peaks/counter # Average found MMIA peaks per trigger
     
+    avg_GLM_in_MMIA = sum_GLM_MMIA_peaks/counter # Average matched peaks per trigger
     
+    print('Done!')
+    print('Adding peak statistics to ' + ssd_path + '/RESULTS.txt...')
     
-    
-    
-    
-    
-    
-    
-    
+    # Writing on the outputting file
+    f =  open(ssd_path + '/RESULTS.txt', 'a')
+    avg_GLM_rel, avg_MMIA_rel
+    f.write('\n')
+    f.write('\n')
+    f.write('* PEAKS INFO:')
+    f.write('\n')
+    f.write('    --> Average GLM peaks found per trigger: %s\n' % str(avg_GLM_peaks))
+    f.write('    --> Average MMIA peaks found per trigger: %s\n' % str(avg_MMIA_peaks))
+    f.write('    --> Average matched peaks found per trigger: %s\n' % str(avg_GLM_in_MMIA))
+    f.write('    --> Average GLM matched peaks found per trigger: %s\n' % str(avg_GLM_rel))
+    f.write('    --> Average MMIA peaks found per trigger: %s\n' % str(avg_MMIA_rel))
+    f.close()
+    print('Done!')
