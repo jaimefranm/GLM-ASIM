@@ -1267,8 +1267,31 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
                 # Closes all the figure windows
                 plt.close('all')
 
+
             # Calculation of delay in samples of GLM with respect to MMIA
-            delay = int(TFG.signal_delay(current_GLM, current_MMIA, show_plots, int(matches[current_day]), j))
+            
+            # Assuring cross-correlation is inside accuracy in time by cropping signals if necessary
+            
+            delay = 100000  # Very high delay value in order to enter the while loop
+            
+            while abs(delay) >= 10000:
+                
+                delay = int(TFG.signal_delay(current_GLM, current_MMIA, show_plots, int(matches[current_day]), j))
+                
+                if abs(delay) >= 10000:
+
+                    new_GLM_length = len(current_GLM) - 1000
+                    new_current_GLM = np.zeros((new_GLM_length,2))
+                    
+                    if delay < 0:      # MMIA delays too far from time accuracy
+                        new_current_GLM[:,:] = current_GLM[1000:len(current_GLM), :]
+                        del current_GLM 
+                        current_GLM = new_current_GLM
+                        
+                    elif delay > 0:    # MMIA anticipates too far from time accuracy
+                        new_current_GLM[:,:] = current_GLM[0:new_GLM_length, :]
+                        del current_GLM 
+                        current_GLM = new_current_GLM
             
             delays[j] = delay
 
@@ -1775,177 +1798,6 @@ def get_peak_matches(GLM_xcorr, GLM_xcorr_norm, MMIA_xcorr, MMIA_xcorr_norm, GLM
     
     return common_peaks
 
-def study_delays(delays, GLM_xcorr, MMIA_xcorr, show_plots):
-    '''
-    This function computes the average delay of GLM with respect to MMIA,
-    both attending absolute values and real values.
-
-    Parameters
-    ----------
-    delays : list
-        List of daily lists of delays per snippet.
-
-    Returns
-    -------
-    avg_delay : float
-        Average delay in samples of real values.
-    avg_abs_delay : float
-        Average delay in samples in absolutes values.
-    avg_negative : float
-        Average MMIA delay in samples.
-    std_negative : float
-        Standard deviation of MMIA delays in samples.
-    avg_positive : float
-        Average GLM delay in samples.
-    std_positive : float
-        Standard deviation of GLM delays in samples.
-    len(MMIA_delays) : int
-        Number of snippets where MMIA delayed.
-    len(GLM_delays) : int
-        Number of snippets where GLM delayed.
-    zero_delay : int
-        Number of snippets where GLM and MMIA were perfectly synchronised.
-    '''
-    
-    valid_snippet_counter = 0
-    delay_list = []
-    MMIA_delays_list = []
-    GLM_delays_list = []
-    no_delays_list = []
-    snippet_counter = 0
-    
-    
-    print('Computing average delay...')
-    
-    for i in range(len(delays)):
-        for j in range(len(delays[i])):
-            snippet_counter = snippet_counter + 1
-            if type(delays[i][j]) == int:
-                valid_snippet_counter = valid_snippet_counter + 1
-                delay_list.append(delays[i][j])
-                if delays[i][j] < 0:
-                    MMIA_delays_list.append(delays[i][j])
-                elif delays[i][j] > 0:
-                    GLM_delays_list.append(delays[i][j])
-                else:
-                    no_delays_list.append(delays[i][j])
-
-    
-    all_delays = np.zeros((len(delay_list),1))
-    all_delays[:,0] = delay_list[:]
-    if len(all_delays) != 0:
-        avg_all = np.average(all_delays)
-        std_all = np.std(all_delays)
-    
-    
-    MMIA_delays = np.zeros((len(MMIA_delays_list),1))
-    MMIA_delays[:,0] = MMIA_delays_list[:]
-    if len(MMIA_delays) != 0:
-        avg_negative = np.average(MMIA_delays)
-        std_negative = np.std(MMIA_delays)
-        
-    # GLM delays is really MMIA sends early
-    GLM_delays = np.zeros((len(GLM_delays_list),1))
-    GLM_delays[:,0] = GLM_delays_list[:]
-    if len(GLM_delays) != 0:
-        avg_positive = np.average(GLM_delays)
-        std_positive = np.std(GLM_delays)
-    
-
-    no_delays = np.zeros((len(no_delays_list),1))
-    no_delays[:,0] = no_delays_list[:]
-    
-    valid_snippets = len(MMIA_delays) + len(GLM_delays) + len(no_delays)
-    
-    # Checking relationship between delay and signal average energy
-    
-    GLM_delay_signal = np.zeros((len(GLM_delays),3))
-    MMIA_delay_signal = np.zeros((len(MMIA_delays),3))
-    GLM_counter = 0
-    MMIA_counter = 0
-    
-    for i in range(len(delays)):
-        for j in range(len(delays[i])):
-            if type(delays[i][j]) == int:
-                if delays[i][j] > 0: # GLM signal delays
-                    GLM_delay_signal[GLM_counter,0] = delays[i][j] # Delay for that snippet
-                    GLM_delay_signal[GLM_counter,1] = np.average(GLM_xcorr[i][j][:,1]) # Average GLM energy for that snippet
-                    GLM_delay_signal[GLM_counter,2] = np.std(GLM_xcorr[i][j][:,1]) # Std deviation of GLM energy for that snippet
-                    GLM_counter = GLM_counter + 1
-                elif delays[i][j] < 0: # MMIA signal delays
-                    MMIA_delay_signal[MMIA_counter,0] = delays[i][j] # Delay for that snippet
-                    MMIA_delay_signal[MMIA_counter,1] = np.average(MMIA_xcorr[i][j][:,1]) # Average MMIA energy for that snippet
-                    MMIA_delay_signal[MMIA_counter,2] = np.std(MMIA_xcorr[i][j][:,1]) # Std deviation of MMIA energy for that snippet
-                    MMIA_counter = MMIA_counter + 1
-            
-
-    if show_plots == 1:
-        # Good snippets vs total snippets
-        labels = ['Valid snippets', 'Non valid snippets']
-        colors = ['mediumaquamarine','lightcoral']
-        sizes = [valid_snippets, snippet_counter-valid_snippets]
-        fig1, ax1 = plt.subplots()
-        ax1.pie(sizes, labels=labels, autopct='%1.2f%%', shadow=False, startangle=90, colors=colors)
-        ax1.axis('equal')
-        plt.show()
-        
-        # MMIA delays vs GLM delays vs No delays
-        labels = ['MMIA delayed', 'MMIA anticipated', 'No delay']
-        colors = ['darksalmon','slategrey','black']
-        sizes = [len(MMIA_delays), len(GLM_delays), len(no_delays)]
-        fig1, ax1 = plt.subplots()
-        ax1.pie(sizes, labels=labels, autopct='%1.2f%%', shadow=False, startangle=90, colors=colors)
-        ax1.axis('equal')
-        plt.show()
-        
-        # Average in delays
-        fig = plt.figure(dpi=800)
-        ax = fig.add_axes([0,0,1,1])
-        langs = ['Avg. Delay', 'Avg. MMIA Delay', 'Avg. MMIA Anticipation']
-        data = [avg_all*0.00001, avg_negative*0.00001, avg_positive*0.00001]
-        plt.grid('on')
-        colors = ['tab:blue', 'darksalmon', 'slategrey']
-        ax.set_ylabel('Delay [s]')
-        ax.bar(langs,data, color=colors, yerr=[std_all*0.00001,std_negative*0.00001,std_positive*0.00001])
-        plt.show()
-        
-        # GLM delay vs GLM avg energy
-        plt.figure()
-        plt.scatter(GLM_delay_signal[:,1]*0.00001, GLM_delay_signal[:,0]*0.00001, color='black', marker='x')
-        plt.xlabel('GLM snippet average radiance [J]')
-        plt.ylabel('Snippet delay [s]')
-        plt.grid('on')
-        plt.show()
-        
-        # MMIA delay vs MMIA avg energy
-        plt.figure()
-        plt.scatter(MMIA_delay_signal[:,1]*0.00001, MMIA_delay_signal[:,0]*0.00001, color='r', marker='x')
-        plt.xlabel(r'MMIA snippet average irradiance $\left[\dfrac{\mu W}{m^2}\right]$')
-        plt.ylabel('Snippet delay [s]')
-        plt.grid('on')
-        plt.show()
-        
-        # GLM delay vs GLM std deviation in energy
-        plt.figure()
-        plt.scatter(GLM_delay_signal[:,2]*0.00001, GLM_delay_signal[:,0]*0.00001, color='black', marker='x')
-        plt.xlabel("GLM snippet's radiance stantard deviation [J]")
-        plt.ylabel('Snippet delay [s]')
-        plt.grid('on')
-        plt.show()
-        
-        # MMIA delay vs MMIA std deviation in energy
-        plt.figure()
-        plt.scatter(MMIA_delay_signal[:,2]*0.00001, MMIA_delay_signal[:,0]*0.00001, color='r', marker='x')
-        plt.xlabel(r"MMIA snippet's irradiance stantard deviation $\left[\dfrac{\mu W}{m^2}\right]$")
-        plt.ylabel('Snippet delay [s]')
-        plt.grid('on')
-        plt.show()
-                     
-    print('Done')
-    print(' ')
-    
-    return [snippet_counter, avg_all, std_all, avg_negative, std_negative, avg_positive, std_positive, len(MMIA_delays), len(GLM_delays), len(no_delays)]
-
 def merge_days(matches, bin_path, filename_end_to_merge):
     # La idea de la funcion es generar una matrix de datos independiente de
     # los datos de la matrix (delays, numero de muestras...)
@@ -2085,8 +1937,6 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
                     MMIA_delay_signal[MMIA_counter,2] = mmia_std[i][j] # Std deviation of MMIA energy for that snippet
                     MMIA_counter = MMIA_counter + 1
     
-    
-    
     print('Done!')
     print('Writing results into ' + ssd_path + '/RESULTS.txt...')
     # Saving results into a .txt
@@ -2115,7 +1965,6 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
     f.write('    --> Number of no delays: %d (%s%%)\n' % (len(no_delays), str(len(no_delays)/valid_triggers*100)))
     f.close()
     print('Done!\n')
-    
     
     if show_plots == 1:
         # Good snippets vs total snippets
@@ -2227,9 +2076,8 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         plt.clf() 
         # Closes all the figure windows
         plt.close('all')
-                     
-    print('Done')
-    print(' ')
+    
+    return delays
 
 def more_statistics(peaks_bin, matches, ssd_path):
     

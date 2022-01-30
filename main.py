@@ -6,14 +6,7 @@ import os
 # Just for plot presentation in LaTeX Style (slows the program)
 #plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
 '''
-# TODO: Meter Xcorr dentro de un while en el que si el delay supera un límite elimine samples por un lado y vuelva a hacer la xcorr
-
-delay[j] == 100000
-while delay[j] > 10000 (?):
-    xcorr...
-    delay[j] = lo que de
-    if delay[j] > 10000:
-        crop_signal
+# TODO: Comprobar por qué hay error en delays negativos en el .txt
 '''
 
 '''
@@ -431,7 +424,7 @@ del trigger_filenames
 os.system('mkdir ' + statistics_figures_path)
 
 show_plots = True
-TFG.study_delays(statistics_bin, show_plots, statistics_figures_path, matches, ssd_path)
+delays = TFG.study_delays(statistics_bin, show_plots, statistics_figures_path, matches, ssd_path)
 
 TFG.more_statistics(peaks_bin, matches, ssd_path)
 show_plots = False
