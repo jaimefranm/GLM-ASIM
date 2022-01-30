@@ -1278,18 +1278,18 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
                 
                 delay = int(TFG.signal_delay(current_GLM, current_MMIA, show_plots, int(matches[current_day]), j))
                 
-                if abs(delay) >= 10000:
+                if abs(delay) >= 10000 and len(current_GLM) > 2000:
 
                     new_GLM_length = len(current_GLM) - 1000
                     new_current_GLM = np.zeros((new_GLM_length,2))
                     
                     if delay < 0:      # MMIA delays too far from time accuracy
-                        new_current_GLM[:,:] = current_GLM[1000:len(current_GLM), :]
+                        new_current_GLM[:,:] = current_GLM[0:new_GLM_length, :]
                         del current_GLM 
                         current_GLM = new_current_GLM
                         
                     elif delay > 0:    # MMIA anticipates too far from time accuracy
-                        new_current_GLM[:,:] = current_GLM[0:new_GLM_length, :]
+                        new_current_GLM[:,:] = current_GLM[1000:len(current_GLM), :]
                         del current_GLM 
                         current_GLM = new_current_GLM
             
