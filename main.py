@@ -28,10 +28,10 @@ show_plots = False
 pre_xc = False
 
 # Boolean variable for pre-detected peaks
-pre_detected_peaks = False
+pre_detected_peaks = True
 
 # Boolean variable for pre-studied peaks
-pre_studied_peaks = False
+pre_studied_peaks = True
 
 # Boolean variable for pre-oredered triggers in directories
 pre_trigger_directories = True
@@ -338,13 +338,7 @@ for day in range(len(matches)):
         f = open(xcorr_bin + '/' + matches[day] + '_signals.pckl', 'rb')
         [GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm] = pickle.load(f)
         f.close()
-        '''
-        # Uploading delays
-        f = open(statistics_path + '/' + matches[day] + '_stats.pckl', 'rb')
-        [delays, GLM_avg, MMIA_avg, GLM_std, MMIA_std] = pickle.load(f)
-        f.close()
-        print('Done!\n')
-        '''
+        
 
 
     ########### PEAK DETECTION AND COMPARISON ###########
@@ -397,14 +391,6 @@ for day in range(len(matches)):
         del GLM_peaks
         del MMIA_peaks
         del matching_peaks
-    '''    
-    else:
-        print('GLM and MMIA peaks for day %s were pre-detected. Uploading from %s/%s.pckl...' % (matches[day], peaks_bin, matches[day]))
-        f = open(peaks_bin + '/' + matches[day] + '.pckl', 'rb')
-        [GLM_peaks, MMIA_peaks, matching_peaks] = pickle.load(f)
-        f.close()
-        print('Done!\n')
-    '''
     
     del GLM_xcorr
     del GLM_xcorr_norm
@@ -417,14 +403,15 @@ del trigger_filenames
 
 ########### OUTPUTTING VALUABLE STATS ###########
 
+if pre_studied_peaks == False:
 
-# Getting delay statistics
+    # Getting delay statistics
 
-# Making necessary directories
-os.system('mkdir ' + statistics_figures_path)
+    # Making necessary directories
+    os.system('mkdir ' + statistics_figures_path)
 
-show_plots = True
-delays = TFG.study_delays(statistics_bin, show_plots, statistics_figures_path, matches, ssd_path)
+    show_plots = True
+    delays = TFG.study_delays(statistics_bin, show_plots, statistics_figures_path, matches, ssd_path)
 
-TFG.more_statistics(peaks_bin, matches, ssd_path)
-show_plots = False
+    TFG.more_statistics(peaks_bin, matches, ssd_path)
+    show_plots = False

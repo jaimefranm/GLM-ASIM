@@ -1270,29 +1270,35 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
 
             # Calculation of delay in samples of GLM with respect to MMIA
             
+            #delay = int(TFG.signal_delay(current_GLM, current_MMIA, show_plots, int(matches[current_day]), j))
+            
             # Assuring cross-correlation is inside accuracy in time by cropping signals if necessary
             
             delay = 100000  # Very high delay value in order to enter the while loop
+            delay_crop = 5000
             
             while abs(delay) >= 10000:
                 
                 delay = int(TFG.signal_delay(current_GLM, current_MMIA, show_plots, int(matches[current_day]), j))
-                
-                if abs(delay) >= 10000 and len(current_GLM) > 2000:
-
-                    new_GLM_length = len(current_GLM) - 1000
-                    new_current_GLM = np.zeros((new_GLM_length,2))
                     
+                if abs(delay) >= 10000 and len(current_GLM) > 7000:
+
+                    new_GLM_length = len(current_GLM) - 2*delay_crop
+                    new_current_GLM = np.zeros((new_GLM_length,2))
+                    new_current_GLM[:,:] = current_GLM[delay_crop:new_GLM_length+delay_crop, :]
+                    del current_GLM 
+                    current_GLM = new_current_GLM
+                    '''
                     if delay < 0:      # MMIA delays too far from time accuracy
                         new_current_GLM[:,:] = current_GLM[0:new_GLM_length, :]
                         del current_GLM 
                         current_GLM = new_current_GLM
                         
                     elif delay > 0:    # MMIA anticipates too far from time accuracy
-                        new_current_GLM[:,:] = current_GLM[1000:len(current_GLM), :]
+                        new_current_GLM[:,:] = current_GLM[delay_crop:len(current_GLM), :]
                         del current_GLM 
                         current_GLM = new_current_GLM
-            
+                    '''
             delays[j] = delay
 
             GLM_xc = current_GLM     # Normalized!
