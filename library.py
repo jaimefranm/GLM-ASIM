@@ -1270,10 +1270,10 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
 
             # Calculation of delay in samples of GLM with respect to MMIA
             
-            #delay = int(TFG.signal_delay(current_GLM, current_MMIA, show_plots, int(matches[current_day]), j))
+            delay = int(TFG.signal_delay(current_GLM, current_MMIA, show_plots, int(matches[current_day]), j))
             
             # Assuring cross-correlation is inside accuracy in time by cropping signals if necessary
-            
+            '''
             delay = 100000  # Very high delay value in order to enter the while loop
             delay_crop = 5000
             
@@ -1288,7 +1288,7 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
                     new_current_GLM[:,:] = current_GLM[delay_crop:new_GLM_length+delay_crop, :]
                     del current_GLM 
                     current_GLM = new_current_GLM
-                    '''
+                    
                     if delay < 0:      # MMIA delays too far from time accuracy
                         new_current_GLM[:,:] = current_GLM[0:new_GLM_length, :]
                         del current_GLM 
@@ -2141,6 +2141,8 @@ def more_statistics(peaks_bin, matches, ssd_path):
     f.write('    --> Average MMIA peaks found per trigger: %s\n' % str(avg_MMIA_peaks))
     f.write('    --> Average matched peaks found per trigger: %s\n' % str(avg_GLM_in_MMIA))
     f.write('    --> Average GLM matched peaks found per trigger: %s\n' % str(avg_GLM_rel))
+    f.write('    --> GLM matched peaks over GLM peaks found per trigger: %s\n' % str(avg_GLM_rel/avg_GLM_peaks * 100))
     f.write('    --> Average MMIA peaks found per trigger: %s\n' % str(avg_MMIA_rel))
+    f.write('    --> MMIA matched peaks over MMIA peaks found per trigger: %s\n' % str(avg_MMIA_rel/avg_MMIA_peaks * 100))
     f.close()
     print('Done!')

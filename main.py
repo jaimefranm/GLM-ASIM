@@ -6,7 +6,11 @@ import os
 # Just for plot presentation in LaTeX Style (slows the program)
 #plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
 '''
-# TODO: Comprobar por qué hay error en delays negativos en el .txt
+# TODO: Comprobar por que hay error en delays negativos en el .txt
+# TODO: Comprobar la ejecucion de MATLAB desde command line
+"C:\Program Files\MATLAB\R2017b\bin\matlab.exe" -nodisplay -nosplash - nodesktop -r "Main; exit"
+
+# TODO: Sacar histogramas de delays
 '''
 
 '''
@@ -25,32 +29,32 @@ first_execution = False
 show_plots = False
 
 # Boolean variable for pre-cross-correlated data
-pre_xc = False
+pre_xc = True
 
 # Boolean variable for pre-detected peaks
 pre_detected_peaks = True
 
 # Boolean variable for pre-studied peaks
-pre_studied_peaks = True
+pre_studied_peaks = False
 
 # Boolean variable for pre-oredered triggers in directories
 pre_trigger_directories = True
 
 # Path to Hard Disk (with all MMIA files and where to store all files)
-#ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
-ssd_path = '/Users/jaimemorandominguez/Desktop/test_descarga_GLM'
+ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
+#ssd_path = '/Users/jaimemorandominguez/Desktop/test_descarga_GLM'
 #ssd_path = '/media/lrg'
 
 # Path where MMIA's .cdf files are located
-#MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
-MMIA_files_path = '/Users/jaimemorandominguez/Desktop/test_cdf'
+MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
+#MMIA_files_path = '/Users/jaimemorandominguez/Desktop/test_cdf'
 #MMIA_files_path = '/media/lrg/mmia_20'
 
 
 ### GLM ###
 
 # Time in seconds to analyze GLM and MMIA before and after LINET's time snippet
-cropping_margin = 0.5
+cropping_margin = 0.05
 
 # Plus of angle in latitude and longitude to snip GLM data
 GLM_radius = 400 # [km]
@@ -293,7 +297,7 @@ for day in range(len(matches)):
         
         # Saving correlated signals
         f = open(xcorr_bin + '/' + matches[day] + '_signals.pckl', 'wb')
-        pickle.dump([GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, delays], f)
+        pickle.dump([GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm], f)
         f.close()
         
         # Saving results in different binaries to make easier further use
