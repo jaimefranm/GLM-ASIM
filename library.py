@@ -1929,9 +1929,15 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
     GLM_counter = 0
     MMIA_counter = 0
     
+    # Creating a delays vector just for histogram plotting
+    delays_vec = []
+    
     for i in range(len(delays)):
         for j in range(len(delays[i])):
             if type(delays[i][j]) == int:
+                
+                delays_vec.append(delays[i][j])
+                
                 if delays[i][j] > 0: # MMIA signal anticipates
                     GLM_delay_signal[GLM_counter,0] = delays[i][j] # Delay for that snippet
                     GLM_delay_signal[GLM_counter,1] = glm_avg[i][j] # Average GLM energy for that snippet
@@ -1942,6 +1948,10 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
                     MMIA_delay_signal[MMIA_counter,1] = mmia_avg[i][j] # Average MMIA energy for that snippet
                     MMIA_delay_signal[MMIA_counter,2] = mmia_std[i][j] # Std deviation of MMIA energy for that snippet
                     MMIA_counter = MMIA_counter + 1
+    
+    # Computing delays histogram intervals
+    #intervals = range(min(delays_vec), max(delays_vec) + 2)
+    
     
     print('Done!')
     print('Writing results into ' + ssd_path + '/RESULTS.txt...')
@@ -1955,24 +1965,24 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
     f.write('\n')
     f.write('    --> Total number of triggers processed: %d\n' % trigger_counter)
     f.write('    --> Number of valid triggers: %d\n' % valid_trigger_counter)
-    f.write('    --> Percentage of valid over total triggers: %s%%\n' % str(valid_trigger_counter/trigger_counter * 100))
+    f.write('    --> Percentage of valid over total triggers: %s%%\n' % str(format(valid_trigger_counter/trigger_counter * 100, '.3f')))
     f.write('\n')
     f.write('\n')
     f.write('* DELAY INFO:')
     f.write('\n')
-    f.write('    --> Average delay in samples: %s +- %s\n' % (str(avg_all), str(std_all)))
-    f.write('    --> Average delay in seconds: %s +- %s\n' % (str(avg_all*0.00001), str(std_all*0.00001)))
-    f.write('    --> Number of MMIA delays: %d (%s%%)\n' % (len(MMIA_delays), str(len(MMIA_delays)/valid_triggers*100)))
-    f.write('    --> Average MMIA delay in samples: %s +- %s\n' % (str(avg_negative), str(std_negative)))
-    f.write('    --> Average MMIA delay in seconds: %s +- %s\n' % (str(avg_negative*0.00001), str(std_negative*0.00001)))
-    f.write('    --> Number of MMIA anticipations: %d (%s%%)\n' % (len(GLM_delays), str(len(GLM_delays)/valid_triggers*100)))
-    f.write('    --> Average MMIA anticipation in samples: %s +- %s\n' % (str(avg_positive), str(std_positive)))
-    f.write('    --> Average MMIA anticipation in seconds: %s +- %s\n' % (str(avg_positive*0.00001), str(std_positive*0.00001)))
-    f.write('    --> Number of no delays: %d (%s%%)\n' % (len(no_delays), str(len(no_delays)/valid_triggers*100)))
+    f.write('    --> Average delay in samples: %s +- %s\n' % (str(format(avg_all, '.3f')), str(format(std_all, '.3f'))))
+    f.write('    --> Average delay in seconds: %s +- %s\n' % (str(format(avg_all*0.00001, '.3f')), str(format(std_all*0.00001, '.3f'))))
+    f.write('    --> Number of MMIA delays: %d (%s%%)\n' % (len(MMIA_delays), str(format(len(MMIA_delays)/valid_triggers*100, '.3f'))))
+    f.write('    --> Average MMIA delay in samples: %s +- %s\n' % (str(format(avg_negative, '.3f')), str(format(std_negative, '.3f'))))
+    f.write('    --> Average MMIA delay in seconds: %s +- %s\n' % (str(format(avg_negative*0.00001, '.3f')), str(format(std_negative*0.00001, '.3f'))))
+    f.write('    --> Number of MMIA anticipations: %d (%s%%)\n' % (len(GLM_delays), str(format(len(GLM_delays)/valid_triggers*100, '.3f'))))
+    f.write('    --> Average MMIA anticipation in samples: %s +- %s\n' % (str(format(avg_positive, '.3f')), str(format(std_positive, '.3f'))))
+    f.write('    --> Average MMIA anticipation in seconds: %s +- %s\n' % (str(format(avg_positive*0.00001, '.3f')), str(format(std_positive*0.00001, '.3f'))))
+    f.write('    --> Number of no delays: %d (%s%%)\n' % (len(no_delays), str(format(len(no_delays)/valid_triggers*100, '.3f'))))
     f.close()
     print('Done!\n')
     
-    if show_plots == 1:
+    if show_plots == True:
         # Good snippets vs total snippets
         labels = ['Valid snippets', 'Non valid snippets']
         colors = ['mediumaquamarine','lightcoral']
@@ -2082,7 +2092,23 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         plt.clf() 
         # Closes all the figure windows
         plt.close('all')
-    
+        
+        # Delays histogram
+        plt.figure()
+        plt.hist(delays_vec, bins = 50, range = [-5000, 5000], rwidth=0.85)
+        plt.title('Delay Histogram (up to 5000 samples of absolute delay)')
+        plt.xlabel('Delay [samples]')
+        plt.ylabel('Frequency')
+        plt.grid('on')
+        #plt.show()
+        plt.savefig(statistics_figures_path + '/delay_histogram.pdf')
+        # Clear the current axes
+        plt.cla() 
+        # Clear the current figure
+        plt.clf() 
+        # Closes all the figure windows
+        plt.close('all')
+        
     return delays
 
 def more_statistics(peaks_bin, matches, ssd_path):
@@ -2137,12 +2163,12 @@ def more_statistics(peaks_bin, matches, ssd_path):
     f.write('\n')
     f.write('* PEAKS INFO:')
     f.write('\n')
-    f.write('    --> Average GLM peaks found per trigger: %s\n' % str(avg_GLM_peaks))
-    f.write('    --> Average MMIA peaks found per trigger: %s\n' % str(avg_MMIA_peaks))
-    f.write('    --> Average matched peaks found per trigger: %s\n' % str(avg_GLM_in_MMIA))
-    f.write('    --> Average GLM matched peaks found per trigger: %s\n' % str(avg_GLM_rel))
-    f.write('    --> GLM matched peaks over GLM peaks found per trigger: %s\n' % str(avg_GLM_rel/avg_GLM_peaks * 100))
-    f.write('    --> Average MMIA peaks found per trigger: %s\n' % str(avg_MMIA_rel))
-    f.write('    --> MMIA matched peaks over MMIA peaks found per trigger: %s\n' % str(avg_MMIA_rel/avg_MMIA_peaks * 100))
+    f.write('    --> Average GLM peaks found per trigger: %s\n' % str(format(avg_GLM_peaks, '.3f')))
+    f.write('    --> Average MMIA peaks found per trigger: %s\n' % str(format(avg_MMIA_peaks, '.3f')))
+    f.write('    --> Average matched peaks found per trigger: %s\n' % str(format(avg_GLM_in_MMIA, '.3f')))
+    f.write('    --> Average percentage of GLM matched peaks found per trigger: %s%%\n' % str(format(avg_GLM_rel*100, '.3f')))
+    f.write('    --> GLM matched peaks over GLM peaks found per trigger: %s\n' % str(format(avg_GLM_rel/avg_GLM_peaks * 100, '.3f')))
+    f.write('    --> Average percentage of MMIA matched peaks found per trigger: %s%%\n' % str(format(avg_MMIA_rel*100, '.3f')))
+    f.write('    --> MMIA matched peaks over MMIA peaks found per trigger: %s\n' % str(format(avg_MMIA_rel/avg_MMIA_peaks * 100, '.3f')))
     f.close()
     print('Done!')
