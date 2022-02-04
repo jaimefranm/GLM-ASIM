@@ -6,14 +6,25 @@ import os
 # Just for plot presentation in LaTeX Style (slows the program)
 #plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
 '''
-# TODO: Comprobar por que hay error en delays negativos en el .txt
 
 # TODO: Comprobar la ejecucion de MATLAB desde command line
-"C:\Program Files\MATLAB\R2017b\bin\matlab.exe" -nodisplay -nosplash - nodesktop -r "Main; exit"
+my_string = '\"' + matlab_path + '\" -nojvm -nodisplay -nosplash -nodesktop -r \"main; exit;\"'
+os.system(my_string)
 
-# TODO: Sacar histogramas de delays
+# TODO: Ejecutar MATLAB una sola vez para todos los eventos
+
+path = pwd; % or whatever, such as 'C:\Users\John\Documents\MATLAB\work'
+% Get a list of all files and folders in this folder.
+files = dir(path);
+% Get a logical vector that tells which is a directory.
+dirFlags = [files.isdir];
+% Extract only those that are directories.
+subFolders = files(dirFlags); % A structure with extra info.
+% Get only the folder names into a cell array.
+subFolderNames = {subFolders(3:end).name} % Start at 3 to skip . and ..
 
 # TODO: Pasar a top cloud energy
+
 '''
 
 '''
