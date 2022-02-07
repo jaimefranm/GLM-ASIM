@@ -1,3 +1,13 @@
+'''
+Library of necessary functions to run 'main.py' to download GLM data, condition
+MMIA and GLM data and compare it.
+
+Please note every 'trigger' notation is an 'event'.
+
+@ Morán Domínguez, Jaime Francisco
+jaime.francisco.moran@upc.edu
+'''
+
 import matplotlib.pyplot as plt
 import numpy as np
 import math
@@ -8,7 +18,6 @@ from netCDF4 import Dataset
 import numpy.matlib
 import scipy.io as sio
 import datetime
-import matlab.engine
 import pandas as pd
 from scipy.signal import find_peaks
 from scipy.signal import lfilter
@@ -17,7 +26,7 @@ from google.cloud import storage
 import pickle
 import library as TFG
 
-def get_MMIA_triggers(path_to_mmia_files, trigger_length):
+def get_MMIA_events(path_to_mmia_files, trigger_length):
 
     print('Generating triggers from MMIA files...')
     ######### Ordering MMIA files by name in ascending time #########
@@ -111,7 +120,7 @@ def get_MMIA_triggers(path_to_mmia_files, trigger_length):
     print('Trigger generation done!\n')
     return [matches, trigger_info]
 
-def create_MMIA_trigger_directories(matches, trigger_filenames, path_to_mmia_files, ssd_path):
+def create_MMIA_event_directories(matches, trigger_filenames, path_to_mmia_files, ssd_path):
 
     print('Copying MMIA files into trigger directories...')
     os.system('mkdir ' + ssd_path + '/mmia_dirs')
@@ -126,7 +135,7 @@ def create_MMIA_trigger_directories(matches, trigger_filenames, path_to_mmia_fil
 
     print('MMIA classification done!\n')
 
-def extract_trigger_info(path_to_mmia_dirs, mmia_mats_files_path, matlab_path):
+def extract_event_info(path_to_mmia_dirs, mmia_mats_files_path, matlab_path):
 
     # Extracting data for every trigger
 
@@ -137,6 +146,9 @@ def extract_trigger_info(path_to_mmia_dirs, mmia_mats_files_path, matlab_path):
     os.system("echo '" + mmia_mats_files_path + "'/ > mmia_mats_path.txt")
     
     # Executing MATLAB
+    #eng = matlab.engine.start_matlab()
+    #eng.MMIA_extraction(nargout=0)
+    #eng.quit()
     my_string = '\"' + matlab_path + '\" -nojvm -nodisplay -nosplash -nodesktop -r \"MMIA_extraction; quit;\"'
     os.system(my_string)
     
@@ -280,7 +292,6 @@ def upload_MMIA_mats(ssd_path, trigger_filenames, matches, current_day):
             trigger_limits[int(data_trigger)] = current_info
 
     return [mmia_raw, trigger_limits]
-
 
 def mov_avg(vector, window_size):
     '''
@@ -1638,7 +1649,7 @@ def get_peak_matches(GLM_xcorr, GLM_xcorr_norm, MMIA_xcorr, MMIA_xcorr_norm, GLM
         # If data was successfully correlated and with 3 or more peaks (condition imposed before)
         if type(GLM_peaks[j]) == np.ndarray and type(MMIA_peaks[j]) == np.ndarray:
             
-            print('Matching peaks for date %s trigger %d / %d...' % (matches[current_day], j, len(GLM_xcorr)))
+            print('Matching peaks for date %s event %d / %d...' % (matches[current_day], j, len(GLM_xcorr)))
             
             # Assuring all the arrays are of int type
             
@@ -1725,7 +1736,7 @@ def get_peak_matches(GLM_xcorr, GLM_xcorr_norm, MMIA_xcorr, MMIA_xcorr_norm, GLM
                 plt.plot(GLM_xcorr[j][:,1], color = 'black', linewidth=0.5)
                 plt.plot(GLM_peaks[j], GLM_xcorr[j][GLM_peaks[j],1], "*", color='b')
                 plt.plot(GLM_peaks[j][matching_GLM_peaks_pos_pos], GLM_xcorr[j][GLM_peaks[j][matching_GLM_peaks_pos_pos],1], "*", color='gold')
-                plt.title('GLM peaks on day %s, trigger %d' % (matches[current_day], j))
+                plt.title('GLM peaks on day %s, event %d' % (matches[current_day], j))
                 plt.xlabel('Samples')
                 plt.ylabel('Radiance [J]')
                 plt.grid('on')
@@ -1742,7 +1753,7 @@ def get_peak_matches(GLM_xcorr, GLM_xcorr_norm, MMIA_xcorr, MMIA_xcorr_norm, GLM
                 plt.plot(MMIA_xcorr[j][:,1], color = 'r', linewidth=0.5)
                 plt.plot(MMIA_peaks[j], MMIA_xcorr[j][MMIA_peaks[j],1], "*", color='b')
                 plt.plot(MMIA_peaks[j][matching_MMIA_peaks_pos_pos], MMIA_xcorr[j][MMIA_peaks[j][matching_MMIA_peaks_pos_pos],1], "*", color='gold')
-                plt.title('MMIA peaks on day %s, trigger %d' % (matches[current_day], j))
+                plt.title('MMIA peaks on day %s, event %d' % (matches[current_day], j))
                 plt.xlabel('Samples')
                 plt.ylabel(r"Irradiance $\left[\dfrac{\mu W}{m^2}\right]$")
                 plt.grid('on')
@@ -1762,7 +1773,7 @@ def get_peak_matches(GLM_xcorr, GLM_xcorr_norm, MMIA_xcorr, MMIA_xcorr_norm, GLM
                 plt.plot(GLM_xcorr_norm[j][:,1], color = 'black', linewidth=0.5)
                 plt.plot(GLM_peaks[j], GLM_xcorr_norm[j][GLM_peaks[j],1], "*", color='b')
                 plt.plot(GLM_peaks[j][matching_GLM_peaks_pos_pos], GLM_xcorr_norm[j][GLM_peaks[j][matching_GLM_peaks_pos_pos],1], "*", color='darkorange')
-                plt.title('GLM (black) and MMIA (red) peaks and common peaks on day %s, trigger %d' % (matches[current_day], j))
+                plt.title('GLM (black) and MMIA (red) peaks and common peaks on day %s, event %d' % (matches[current_day], j))
                 plt.xlabel('Samples')
                 plt.ylabel("Normalized Energy")
                 plt.legend(['GLM corr norm signal', 'GLM peaks', 'GLM matching peaks', 'MMIA corr norm signal', 'MMIA peaks', 'MMIA matching peaks'])
@@ -1777,7 +1788,7 @@ def get_peak_matches(GLM_xcorr, GLM_xcorr_norm, MMIA_xcorr, MMIA_xcorr_norm, GLM
                 plt.close('all')
                 
         else:
-            print('Date %s trigger %d was not correlated' % (matches[current_day], j))
+            print('Date %s event %d was not suitable for study' % (matches[current_day], j))
 
     print(' ')
     print('Done!')
@@ -2074,7 +2085,23 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         # Closes all the figure windows
         plt.close('all')
         
-        # Delays histogram
+        # Delays histogram for all delays
+        plt.figure()
+        plt.hist(delays_vec, bins = 50, rwidth=0.85)
+        plt.title('All Delay Histogram')
+        plt.xlabel('Delay [samples]')
+        plt.ylabel('Frequency')
+        plt.grid('on')
+        #plt.show()
+        plt.savefig(statistics_figures_path + '/all_delay_histogram.pdf')
+        # Clear the current axes
+        plt.cla() 
+        # Clear the current figure
+        plt.clf() 
+        # Closes all the figure windows
+        plt.close('all')
+        
+        # Delays histogram for all delays
         plt.figure()
         plt.hist(delays_vec, bins = 50, range = [-5000, 5000], rwidth=0.85)
         plt.title('Delay Histogram (up to 5000 samples of absolute delay)')
@@ -2082,7 +2109,7 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         plt.ylabel('Frequency')
         plt.grid('on')
         #plt.show()
-        plt.savefig(statistics_figures_path + '/delay_histogram.pdf')
+        plt.savefig(statistics_figures_path + '/inrange_delay_histogram.pdf')
         # Clear the current axes
         plt.cla() 
         # Clear the current figure

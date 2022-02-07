@@ -33,7 +33,7 @@ mats_path = mats_path(1:end-1);
 for i = 1:length(dir_names)
     current_event = cell2mat(dir_names(i));
     str = append(dirs_path, current_event, '/');
-    sentence = append('Extracting data from ',current_event,'...\n');
+    sentence = append(int2str(i),'. Extracting MMIA data from .cdf files for ',current_event,'...\n');
     fprintf(sentence)
 
 % (still inside for i = 1:length(dir_names) loop)

@@ -38,21 +38,22 @@ pre_studied = False
 # Boolean variable for just outputting results
 just_results = False
 
-# Boolean variable for pre-oredered triggers in directories
-pre_trigger_directories = True
+# Boolean variable for pre-oredered events in directories
+pre_event_directories = True
 
 # Path to Hard Disk (with all MMIA files and where to store all files)
-#ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
-ssd_path = '/Users/jaimemorandominguez/Desktop/test_descarga_GLM'
+ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
+#ssd_path = '/Users/jaimemorandominguez/Desktop/test_descarga_GLM'
 #ssd_path = '/media/lrg'
 
 # Path where MMIA's .cdf files are located
-#MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
-MMIA_files_path = '/Users/jaimemorandominguez/Desktop/test_cdf'
+MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
+#MMIA_files_path = '/Users/jaimemorandominguez/Desktop/test_cdf'
 #MMIA_files_path = '/media/lrg/mmia_20'
 
 # Path to MATLAB executable
 matlab_path = '/Applications/MATLAB_R2021b.app/bin/matlab'
+#matlab_path = '/usr/local/bin/matlab'
 
 
 ### GLM ###
@@ -82,8 +83,8 @@ pre_extracted_MMIA = False
 # Boolean variable for conditioning MMIA data if not done before
 pre_conditioned_MMIA = False
 
-# Maximum length in seconds of each trigger
-trigger_length = 2 # [s]
+# Maximum length in seconds of each event
+event_length = 2 # [s]
 
 # Threshold for MMIA signal
 mmia_threshold = 1.75   # [micro W / m^2]
@@ -117,11 +118,11 @@ mmia_mats_files_path = ssd_path + '/mmia_mat'
 
 
 
-###### MMIA'S TRIGGER CHARACTERIZATION ######
+###### MMIA'S EVENT CHARACTERIZATION ######
 
 if first_execution == True:
     
-    pre_trigger_directories = False
+    pre_event_directories = False
     pre_downloaded_GLM = False
     pre_extracted_GLM = False
     pre_integrated_GLM = False
@@ -131,7 +132,7 @@ if first_execution == True:
     pre_detected_peaks = False
     pre_studied = False
 
-    [matches, trigger_filenames] = TFG.get_MMIA_triggers(MMIA_files_path, trigger_length)
+    [matches, event_filenames] = TFG.get_MMIA_events(MMIA_files_path, event_length)
     
     os.system('mkdir ' + general_variables_path)
     
@@ -140,9 +141,9 @@ if first_execution == True:
     pickle.dump(matches, f)
     f.close()
     
-    # Saving 'trigger_filenames' variable into a binary
-    f = open(general_variables_path+'/trigger_filenames.pckl', 'wb')
-    pickle.dump(trigger_filenames, f)
+    # Saving 'event_filenames' variable into a binary
+    f = open(general_variables_path+'/event_filenames.pckl', 'wb')
+    pickle.dump(event_filenames, f)
     f.close()
     
 else:
@@ -154,9 +155,9 @@ else:
     
     if just_results == False:
     
-        # Uploading 'trigger_filenames' from binary
-        f = open(general_variables_path+'/trigger_filenames.pckl', 'rb')
-        trigger_filenames = pickle.load(f)
+        # Uploading 'event_filenames' from binary
+        f = open(general_variables_path+'/event_filenames.pckl', 'rb')
+        event_filenames = pickle.load(f)
         f.close()
 
 
@@ -165,14 +166,14 @@ if just_results == False:
     ###### MMIA'S DATA ORDERING AND EXTRACTION ######
     
     # MMIA file ordering
-    if pre_trigger_directories == False:
+    if pre_event_directories == False:
         
-        TFG.create_MMIA_trigger_directories(matches, trigger_filenames, MMIA_files_path, ssd_path)
+        TFG.create_MMIA_event_directories(matches, event_filenames, MMIA_files_path, ssd_path)
     
     # MMIA data extraction
     if pre_extracted_MMIA == False:
         os.system('mkdir ' + mmia_mats_files_path)
-        TFG.extract_trigger_info(path_to_mmia_dirs, mmia_mats_files_path, matlab_path)
+        TFG.extract_event_info(path_to_mmia_dirs, mmia_mats_files_path, matlab_path)
 
 
     #########################################################################################################
@@ -191,7 +192,7 @@ if just_results == False:
 
         # Uploading MMIA data and info
         print('All MMIA data was pre-extracted, uploading from %s...' % MMIA_mats_path)
-        [mmia_raw, trigger_limits] = TFG.upload_MMIA_mats(ssd_path, trigger_filenames, matches, day)
+        [mmia_raw, event_limits] = TFG.upload_MMIA_mats(ssd_path, event_filenames, matches, day)
         print('Done!\n')
 
 
@@ -221,13 +222,13 @@ if just_results == False:
         # Downloading GLM data from Google Cloud Services
         if pre_downloaded_GLM == False:
             
-            TFG.download_GLM(ssd_path, trigger_filenames, MMIA_filtered, matches, day)
+            TFG.download_GLM(ssd_path, event_filenames, MMIA_filtered, matches, day)
 
-        # Extracting GLM data into trigger .txt files
+        # Extracting GLM data into event .txt files
         if pre_extracted_GLM == False:
 
-            TFG.extract_GLM(GLM_ordered_dir, GLM_ordered_outputs, trigger_limits, matches, MMIA_filtered, angle_margin, cropping_margin, day)
-        del trigger_limits
+            TFG.extract_GLM(GLM_ordered_dir, GLM_ordered_outputs, event_limits, matches, MMIA_filtered, angle_margin, cropping_margin, day)
+        del event_limits
 
         # Uploading and integrating GLM signal
 
@@ -414,7 +415,7 @@ if just_results == False:
         del MMIA_xcorr
         del MMIA_xcorr_norm
         
-    del trigger_filenames
+    del event_filenames
 
 
 
