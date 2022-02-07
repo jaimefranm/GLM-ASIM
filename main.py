@@ -7,22 +7,6 @@ import os
 #plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
 '''
 
-# TODO: Comprobar la ejecucion de MATLAB desde command line
-my_string = '\"' + matlab_path + '\" -nojvm -nodisplay -nosplash -nodesktop -r \"main; exit;\"'
-os.system(my_string)
-
-# TODO: Ejecutar MATLAB una sola vez para todos los eventos
-
-path = pwd; % or whatever, such as 'C:\Users\John\Documents\MATLAB\work'
-% Get a list of all files and folders in this folder.
-files = dir(path);
-% Get a logical vector that tells which is a directory.
-dirFlags = [files.isdir];
-% Extract only those that are directories.
-subFolders = files(dirFlags); % A structure with extra info.
-% Get only the folder names into a cell array.
-subFolderNames = {subFolders(3:end).name} % Start at 3 to skip . and ..
-
 # TODO: Pasar a top cloud energy
 
 '''
@@ -43,29 +27,32 @@ first_execution = False
 show_plots = False
 
 # Boolean variable for pre-cross-correlated data
-pre_xc = True
+pre_xc = False
 
 # Boolean variable for pre-detected peaks
-pre_detected_peaks = True
+pre_detected_peaks = False
 
 # Boolean variable for pre-studied peaks
 pre_studied = False
 
 # Boolean variable for just outputting results
-just_results = True
+just_results = False
 
 # Boolean variable for pre-oredered triggers in directories
 pre_trigger_directories = True
 
 # Path to Hard Disk (with all MMIA files and where to store all files)
-ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
-#ssd_path = '/Users/jaimemorandominguez/Desktop/test_descarga_GLM'
+#ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
+ssd_path = '/Users/jaimemorandominguez/Desktop/test_descarga_GLM'
 #ssd_path = '/media/lrg'
 
 # Path where MMIA's .cdf files are located
-MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
-#MMIA_files_path = '/Users/jaimemorandominguez/Desktop/test_cdf'
+#MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
+MMIA_files_path = '/Users/jaimemorandominguez/Desktop/test_cdf'
 #MMIA_files_path = '/media/lrg/mmia_20'
+
+# Path to MATLAB executable
+matlab_path = '/Applications/MATLAB_R2021b.app/bin/matlab'
 
 
 ### GLM ###
@@ -84,16 +71,16 @@ pre_downloaded_GLM = True
 pre_extracted_GLM = True
 
 # Boolean variable for integrating GLM signals if not pre-done
-pre_integrated_GLM = True
+pre_integrated_GLM = False
 
 
 ### MMIA ###
 
 # Boolean variable for pre-extracted files
-pre_extracted_MMIA = True
+pre_extracted_MMIA = False
 
 # Boolean variable for conditioning MMIA data if not done before
-pre_conditioned_MMIA = True
+pre_conditioned_MMIA = False
 
 # Maximum length in seconds of each trigger
 trigger_length = 2 # [s]
@@ -125,6 +112,8 @@ GLM_integrated_bin = ssd_path + '/glm_int_bin'
 
 MMIA_mats_path = ssd_path + '/mmia_mat'
 MMIA_filtered_bin = ssd_path + '/mmia_filt_bin'
+path_to_mmia_dirs = ssd_path + '/mmia_dirs'
+mmia_mats_files_path = ssd_path + '/mmia_mat'
 
 
 
@@ -172,15 +161,23 @@ else:
 
 
 if just_results == False:
-
+    
+    ###### MMIA'S DATA ORDERING AND EXTRACTION ######
+    
+    # MMIA file ordering
     if pre_trigger_directories == False:
         
         TFG.create_MMIA_trigger_directories(matches, trigger_filenames, MMIA_files_path, ssd_path)
+    
+    # MMIA data extraction
+    if pre_extracted_MMIA == False:
+        os.system('mkdir ' + mmia_mats_files_path)
+        TFG.extract_trigger_info(path_to_mmia_dirs, mmia_mats_files_path, matlab_path)
 
 
-    ###############################################################################
-    #   From this point every step is made for every day with existing MMIA data
-    ###############################################################################
+    #########################################################################################################
+    #  From this point every step is made for every day with existing MMIA data until outputting statistics
+    #########################################################################################################
 
 
     for day in range(len(matches)):
@@ -190,17 +187,12 @@ if just_results == False:
         print('******************************')
         print(' ')
         
-        ###### MMIA'S DATA ORDERING, EXTRACTION, UPLOAD AND CONDITIONING ######
+        ###### MMIA'S DATA UPLOAD AND CONDITIONING ######
 
-        # File ordering and data extraction
-        if pre_extracted_MMIA == False:
-
-            [mmia_raw, trigger_limits] = TFG.extract_trigger_info(ssd_path, trigger_filenames, matches, day)
-
-        else:
-            print('All MMIA data was pre-extracted, uploading from %s...' % MMIA_mats_path)
-            [mmia_raw, trigger_limits] = TFG.upload_MMIA_mats(ssd_path, trigger_filenames, matches, day)
-            print('Done!\n')
+        # Uploading MMIA data and info
+        print('All MMIA data was pre-extracted, uploading from %s...' % MMIA_mats_path)
+        [mmia_raw, trigger_limits] = TFG.upload_MMIA_mats(ssd_path, trigger_filenames, matches, day)
+        print('Done!\n')
 
 
         if pre_conditioned_MMIA == False:

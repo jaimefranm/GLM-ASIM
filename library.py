@@ -126,47 +126,28 @@ def create_MMIA_trigger_directories(matches, trigger_filenames, path_to_mmia_fil
 
     print('MMIA classification done!\n')
 
-def extract_trigger_info(ssd_path, trigger_filenames, matches, current_day):
-
-    mmia_mat_files_path = ssd_path + '/mmia_mat'
-    
-    if current_day == 0:
-        os.system('mkdir ' + mmia_mat_files_path)
-
-    trigger_limits = [None] * len(trigger_filenames[current_day])
-    mmia_raw = [None] * len(trigger_filenames[current_day])
+def extract_trigger_info(path_to_mmia_dirs, mmia_mats_files_path, matlab_path):
 
     # Extracting data for every trigger
-    for j in range(len(trigger_filenames[current_day])):
 
-        print('Starting the MatLab engine and extracting data from .cdf files for day %d (%d / %d), trigger %d / %d...' % (int(matches[current_day]), current_day+1, len(matches), j, len(trigger_filenames[current_day])))
-        eng = matlab.engine.start_matlab()
-        path = ssd_path + '/mmia_dirs/' + matches[current_day] + '_' + str(j) + '/'
-        eng.workspace['str'] = path
-        eng.MMIA_symplified_v5(nargout=0)
-        eng.quit()
-        wd = os.getcwd()
+    print('Starting MatLab and extracting data from .cdf files (this process can take a while)...')
+    
+    # Writing those paths MATLAB will use in a .txt
+    os.system("echo '" + path_to_mmia_dirs + "'/ > mmia_dirs_path.txt")
+    os.system("echo '" + mmia_mats_files_path + "'/ > mmia_mats_path.txt")
+    
+    # Executing MATLAB
+    my_string = '\"' + matlab_path + '\" -nojvm -nodisplay -nosplash -nodesktop -r \"MMIA_extraction; quit;\"'
+    os.system(my_string)
+    
+    # Removing .txt's with paths (no longer used)
+    os.system('rm mmia_dirs_path.txt mmia_mats_path.txt')
+    
+    with os.scandir(mmia_mats_files_path) as files:
+        files = [file.name for file in files if file.is_file() and file.name.endswith('.mat')]
 
-        with os.scandir(wd) as files:
-            files = [file.name for file in files if file.is_file() and file.name.endswith('.mat')]
-
-        if len(files) != 0:
-
-            os.system('mv '+wd+'/MMIA_data.mat ' + mmia_mat_files_path+'/'+matches[current_day]+'_' + str(j) +'_data.mat')
-            os.system('mv '+wd+'/MMIA_space_time.mat ' + mmia_mat_files_path+'/'+matches[current_day]+'_' + str(j) +'_info.mat')
-
-            # Filling mmia raw data and trigger info variables
-            data_mat = sio.loadmat(mmia_mat_files_path+'/'+matches[current_day]+'_' + str(j) +'_data.mat')
-            info_mat = sio.loadmat(mmia_mat_files_path+'/'+matches[current_day]+'_' + str(j) +'_info.mat')
-            current_data = data_mat.get('MMIA_all')
-            current_info = info_mat.get('space_time')
-            mmia_raw[j] = current_data
-            trigger_limits[j] = current_info
-        else:
-            print('No MMIA data could be extracted for day %s trigger %d' % (matches[current_day], j))
-    print(' ')  # For separating dates
-
-    return [mmia_raw, trigger_limits]
+    if len(files) == 0:
+        print('No MMIA data could be extracted for any day!')
 
 def download_GLM(ssd_path, trigger_filenames, MMIA_filtered, matches, current_day):
 
@@ -2172,3 +2153,45 @@ def more_statistics(peaks_bin, matches, ssd_path):
     f.write('    --> MMIA matched peaks over MMIA peaks found per event: %s\n' % str(format(avg_MMIA_rel/avg_MMIA_peaks * 100, '.3f')))
     f.close()
     print('Done!')
+
+def extract_trigger_info_v2(ssd_path, trigger_filenames, matches, current_day):
+
+    mmia_mat_files_path = ssd_path + '/mmia_mat'
+    
+    if current_day == 0:
+        os.system('mkdir ' + mmia_mat_files_path)
+
+    trigger_limits = [None] * len(trigger_filenames[current_day])
+    mmia_raw = [None] * len(trigger_filenames[current_day])
+
+    # Extracting data for every trigger
+    for j in range(len(trigger_filenames[current_day])):
+
+        print('Starting the MatLab engine and extracting data from .cdf files for day %d (%d / %d), trigger %d / %d...' % (int(matches[current_day]), current_day+1, len(matches), j, len(trigger_filenames[current_day])))
+        eng = matlab.engine.start_matlab()
+        path = ssd_path + '/mmia_dirs/' + matches[current_day] + '_' + str(j) + '/'
+        eng.workspace['str'] = path
+        eng.MMIA_symplified_v5(nargout=0)
+        eng.quit()
+        wd = os.getcwd()
+
+        with os.scandir(wd) as files:
+            files = [file.name for file in files if file.is_file() and file.name.endswith('.mat')]
+
+        if len(files) != 0:
+
+            os.system('mv '+wd+'/MMIA_data.mat ' + mmia_mat_files_path+'/'+matches[current_day]+'_' + str(j) +'_data.mat')
+            os.system('mv '+wd+'/MMIA_space_time.mat ' + mmia_mat_files_path+'/'+matches[current_day]+'_' + str(j) +'_info.mat')
+
+            # Filling mmia raw data and trigger info variables
+            data_mat = sio.loadmat(mmia_mat_files_path+'/'+matches[current_day]+'_' + str(j) +'_data.mat')
+            info_mat = sio.loadmat(mmia_mat_files_path+'/'+matches[current_day]+'_' + str(j) +'_info.mat')
+            current_data = data_mat.get('MMIA_all')
+            current_info = info_mat.get('space_time')
+            mmia_raw[j] = current_data
+            trigger_limits[j] = current_info
+        else:
+            print('No MMIA data could be extracted for day %s trigger %d' % (matches[current_day], j))
+    print(' ')  # For separating dates
+
+    return [mmia_raw, trigger_limits]
