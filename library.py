@@ -1922,13 +1922,13 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
     MMIA_counter = 0
     
     # Creating a delays vector just for histogram plotting
-    delays_vec = []
+    delays_s_vec = []
     
     for i in range(len(delays)):
         for j in range(len(delays[i])):
             if type(delays[i][j]) == int:
                 
-                delays_vec.append(delays[i][j])
+                delays_s_vec.append(delays[i][j]*0.00001)
                 
                 if delays[i][j] > 0: # MMIA signal anticipates
                     GLM_delay_signal[GLM_counter,0] = delays[i][j] # Delay for that snippet
@@ -1942,7 +1942,7 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
                     MMIA_counter = MMIA_counter + 1
     
     # Computing delays histogram intervals
-    #intervals = range(min(delays_vec), max(delays_vec) + 2)
+    #intervals = range(min(delays_s_vec), max(delays_s_vec) + 2)
     
     
     print('Done!')
@@ -1962,14 +1962,14 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
     f.write('\n')
     f.write('* DELAY INFO:')
     f.write('\n')
-    f.write('    --> Average delay in samples: %s +- %s\n' % (str(format(avg_all, '.3f')), str(format(std_all, '.3f'))))
-    f.write('    --> Average delay in seconds: %s +- %s\n' % (str(format(avg_all*0.00001, '.3f')), str(format(std_all*0.00001, '.3f'))))
-    f.write('    --> Number of MMIA delays: %d (%s%%)\n' % (len(MMIA_delays), str(format(len(MMIA_delays)/valid_triggers*100, '.3f'))))
-    f.write('    --> Average MMIA delay in samples: %s +- %s\n' % (str(format(avg_negative, '.3f')), str(format(std_negative, '.3f'))))
-    f.write('    --> Average MMIA delay in seconds: %s +- %s\n' % (str(format(avg_negative*0.00001, '.3f')), str(format(std_negative*0.00001, '.3f'))))
-    f.write('    --> Number of MMIA anticipations: %d (%s%%)\n' % (len(GLM_delays), str(format(len(GLM_delays)/valid_triggers*100, '.3f'))))
-    f.write('    --> Average MMIA anticipation in samples: %s +- %s\n' % (str(format(avg_positive, '.3f')), str(format(std_positive, '.3f'))))
-    f.write('    --> Average MMIA anticipation in seconds: %s +- %s\n' % (str(format(avg_positive*0.00001, '.3f')), str(format(std_positive*0.00001, '.3f'))))
+    f.write('    --> Average delay in samples (accounting for positive and negative values): %s +- %ss\n' % (str(format(avg_all, '.3f')), str(format(std_all, '.3f'))))
+    f.write('    --> Average delay in seconds (accounting for positive and negative values): %s +- %s\n' % (str(format(avg_all*0.00001, '.3f')), str(format(std_all*0.00001, '.3f'))))
+    f.write('    --> Number of MMIA delays: %d (%s%% over valid events)\n' % (len(MMIA_delays), str(format(len(MMIA_delays)/valid_triggers*100, '.3f'))))
+    f.write('       --> Average MMIA delay in samples: %s +- %s\n' % (str(format(avg_negative, '.3f')), str(format(std_negative, '.3f'))))
+    f.write('       --> Average MMIA delay in seconds: %s +- %s\n' % (str(format(avg_negative*0.00001, '.3f')), str(format(std_negative*0.00001, '.3f'))))
+    f.write('    --> Number of MMIA anticipations: %d (%s%% over valid events)\n' % (len(GLM_delays), str(format(len(GLM_delays)/valid_triggers*100, '.3f'))))
+    f.write('       --> Average MMIA anticipation in samples: %s +- %s\n' % (str(format(avg_positive, '.3f')), str(format(std_positive, '.3f'))))
+    f.write('       --> Average MMIA anticipation in seconds: %s +- %s\n' % (str(format(avg_positive*0.00001, '.3f')), str(format(std_positive*0.00001, '.3f'))))
     f.write('    --> Number of no delays: %d (%s%%)\n' % (len(no_delays), str(format(len(no_delays)/valid_triggers*100, '.3f'))))
     f.close()
     print('Done!\n')
@@ -2087,9 +2087,9 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         
         # Delays histogram for all delays
         plt.figure()
-        plt.hist(delays_vec, bins = 50, rwidth=0.85)
+        plt.hist(delays_s_vec, bins = 50, rwidth=0.85)
         plt.title('All Delay Histogram')
-        plt.xlabel('Delay [samples]')
+        plt.xlabel('Delay [s]')
         plt.ylabel('Frequency')
         plt.grid('on')
         #plt.show()
@@ -2103,9 +2103,9 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         
         # Delays histogram for all delays
         plt.figure()
-        plt.hist(delays_vec, bins = 50, range = [-5000, 5000], rwidth=0.85)
+        plt.hist(delays_s_vec, bins = 50, range = [-0.05, 0.05], rwidth=0.85)
         plt.title('Delay Histogram (up to 5000 samples of absolute delay)')
-        plt.xlabel('Delay [samples]')
+        plt.xlabel('Delay [s]')
         plt.ylabel('Frequency')
         plt.grid('on')
         #plt.show()
@@ -2116,8 +2116,6 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         plt.clf() 
         # Closes all the figure windows
         plt.close('all')
-        
-    return delays
 
 def more_statistics(peaks_bin, matches, ssd_path):
     

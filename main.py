@@ -36,7 +36,7 @@ pre_detected_peaks = False
 pre_studied = False
 
 # Boolean variable for just outputting results
-just_results = False
+just_results = True
 
 # Boolean variable for pre-oredered events in directories
 pre_event_directories = True
@@ -429,7 +429,7 @@ if pre_studied == False:
     os.system('mkdir ' + statistics_figures_path)
 
     show_plots = True
-    delays = TFG.study_delays(statistics_bin, show_plots, statistics_figures_path, matches, ssd_path)
+    TFG.study_delays(statistics_bin, show_plots, statistics_figures_path, matches, ssd_path)
 
     TFG.more_statistics(peaks_bin, matches, ssd_path)
     show_plots = False
