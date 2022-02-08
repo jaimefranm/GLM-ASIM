@@ -29,6 +29,9 @@ show_plots = False
 # Boolean variable for pre-cross-correlated data
 pre_xc = False
 
+# Boolean variable for pre-converted to top cloud energy
+pre_tce = False
+
 # Boolean variable for pre-detected peaks
 pre_detected_peaks = False
 
@@ -36,7 +39,7 @@ pre_detected_peaks = False
 pre_studied = False
 
 # Boolean variable for just outputting results
-just_results = True
+just_results = False
 
 # Boolean variable for pre-oredered events in directories
 pre_event_directories = True
@@ -72,7 +75,7 @@ pre_downloaded_GLM = True
 pre_extracted_GLM = True
 
 # Boolean variable for integrating GLM signals if not pre-done
-pre_integrated_GLM = False
+pre_integrated_GLM = True
 
 
 ### MMIA ###
@@ -102,6 +105,7 @@ mmia_threshold = 1.75   # [micro W / m^2]
 general_variables_path = ssd_path + '/general_variables_bin'
 xcorr_bin = ssd_path + '/xcorr_bin'
 xcorr_figures_path = ssd_path + '/xcorr_figures'
+tce_bin = ssd_path + '/top_cloud_energy_bin'
 peaks_bin = ssd_path + '/peaks_bin'
 peaks_figures_path = ssd_path + '/peaks_figures'
 statistics_bin = ssd_path + '/stats_bin'
@@ -129,6 +133,7 @@ if first_execution == True:
     pre_extracted_MMIA = False
     pre_conditioned_MMIA = False
     pre_xc = False
+    pre_tce = False
     pre_detected_peaks = False
     pre_studied = False
 
@@ -357,6 +362,24 @@ if just_results == False:
             [GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm] = pickle.load(f)
             f.close()
             
+
+
+        ########### CONVERSION TO TOP CLOUD ENERGY ###########
+        
+        if pre_tce == False:
+
+            if day == 0:
+                os.system('mkdir ' + tce_bin)
+            
+            # Convert GLM and MMIA data to Top Cloud Energy data
+            print('Converting GLM and MMIA instrumental data into Top Cloud Energy for day')
+            [glm_tce, mmia_tce] = TFG.top_cloud_energy(GLM_xcorr, MMIA_xcorr)
+            
+            # Saving GLM and MMIA Top Cloud Energy data
+            f = open(tce_bin + '/' + matches[day] + '.pckl', 'wb')
+            pickle.dump([glm_tce, mmia_tce], f)
+            f.close()
+
 
 
         ########### PEAK DETECTION AND COMPARISON ###########
