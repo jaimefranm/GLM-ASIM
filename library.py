@@ -1941,10 +1941,6 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
                     MMIA_delay_signal[MMIA_counter,2] = mmia_std[i][j] # Std deviation of MMIA energy for that snippet
                     MMIA_counter = MMIA_counter + 1
     
-    # Computing delays histogram intervals
-    #intervals = range(min(delays_s_vec), max(delays_s_vec) + 2)
-    
-    
     print('Done!')
     print('Writing results into ' + ssd_path + '/RESULTS.txt...')
     # Saving results into a .txt
@@ -1962,7 +1958,7 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
     f.write('\n')
     f.write('* DELAY INFO:')
     f.write('\n')
-    f.write('    --> Average delay in samples (accounting for positive and negative values): %s +- %ss\n' % (str(format(avg_all, '.3f')), str(format(std_all, '.3f'))))
+    f.write('    --> Average delay in samples (accounting for positive and negative values): %s +- %s\n' % (str(format(avg_all, '.3f')), str(format(std_all, '.3f'))))
     f.write('    --> Average delay in seconds (accounting for positive and negative values): %s +- %s\n' % (str(format(avg_all*0.00001, '.3f')), str(format(std_all*0.00001, '.3f'))))
     f.write('    --> Number of MMIA delays: %d (%s%% over valid events)\n' % (len(MMIA_delays), str(format(len(MMIA_delays)/valid_triggers*100, '.3f'))))
     f.write('       --> Average MMIA delay in samples: %s +- %s\n' % (str(format(avg_negative, '.3f')), str(format(std_negative, '.3f'))))
@@ -2007,7 +2003,7 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         # Closes all the figure windows
         plt.close('all')
         
-        # Average in delays
+        # Averaging in delays
         fig = plt.figure(dpi=800)
         ax = fig.add_axes([0,0,1,1])
         langs = ['Avg. Delay', 'Avg. MMIA Delay', 'Avg. MMIA Anticipation']
@@ -2104,7 +2100,7 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         # Delays histogram for all delays
         plt.figure()
         plt.hist(delays_s_vec, bins = 50, range = [-0.05, 0.05], rwidth=0.85)
-        plt.title('Delay Histogram (up to 5000 samples of absolute delay)')
+        plt.title('Delay Histogram (up to 0.05s of absolute delay)')
         plt.xlabel('Delay [s]')
         plt.ylabel('Frequency')
         plt.grid('on')
@@ -2131,14 +2127,14 @@ def more_statistics(peaks_bin, matches, ssd_path):
     sum_rel_GLM = 0 # en mmia/todos
     sum_rel_MMIA = 0 # en glm/todos
     sum_GLM_peaks = 0 # total peaks
-    sum_GLM_MMIA_peaks = 0
+    sum_matching_peaks = 0
     sum_MMIA_peaks = 0
     
     for i in range(len(GLM_peaks)):
         for j in range(len(GLM_peaks[i])):
             if type(matching_peaks[i][j]) == list:
                 
-                counter = counter+1
+                counter = counter + 1
                 
                 # Matched vs Total Peaks for every instrument
                 sum_rel_GLM = sum_rel_GLM + len(matching_peaks[i][j][0])/len(GLM_peaks[i][j])
@@ -2149,35 +2145,36 @@ def more_statistics(peaks_bin, matches, ssd_path):
                 sum_MMIA_peaks = sum_MMIA_peaks + len(MMIA_peaks[i][j])
                 
                 # Total matched peaks
-                sum_GLM_MMIA_peaks = sum_GLM_MMIA_peaks + len(matching_peaks[i][j][0])
+                sum_matching_peaks = sum_matching_peaks + len(matching_peaks[i][j][0])
     
-    avg_GLM_rel = sum_rel_GLM/counter   # Average matched vs total GLM peaks per trigger
-    avg_MMIA_rel = sum_rel_MMIA/counter # Average matched vs total MMIA peaks per trigger
+    avg_GLM_rel = sum_rel_GLM/counter   # Average matched vs total GLM peaks per event
+    avg_MMIA_rel = sum_rel_MMIA/counter # Average matched vs total MMIA peaks per event
     
-    avg_GLM_peaks = sum_GLM_peaks/counter   # Average found GLM peaks per trigger
-    avg_MMIA_peaks = sum_MMIA_peaks/counter # Average found MMIA peaks per trigger
+    avg_GLM_peaks = sum_GLM_peaks/counter   # Average found GLM peaks per event
+    avg_MMIA_peaks = sum_MMIA_peaks/counter # Average found MMIA peaks per event
     
-    avg_GLM_in_MMIA = sum_GLM_MMIA_peaks/counter # Average matched peaks per trigger
+    avg_matching = sum_matching_peaks/counter # Average matched peaks per event
     
     print('Done!')
     print('Adding peak statistics to ' + ssd_path + '/RESULTS.txt...')
     
     # Writing on the outputting file
     f =  open(ssd_path + '/RESULTS.txt', 'a')
-    avg_GLM_rel, avg_MMIA_rel
     f.write('\n')
     f.write('\n')
     f.write('* PEAKS INFO:')
     f.write('\n')
     f.write('    --> Average GLM peaks found per event: %s\n' % str(format(avg_GLM_peaks, '.3f')))
     f.write('    --> Average MMIA peaks found per event: %s\n' % str(format(avg_MMIA_peaks, '.3f')))
-    f.write('    --> Average matched peaks found per event: %s\n' % str(format(avg_GLM_in_MMIA, '.3f')))
-    f.write('    --> Average percentage of GLM matched peaks found per event: %s%%\n' % str(format(avg_GLM_rel*100, '.3f')))
-    f.write('    --> GLM matched peaks over GLM peaks found per event: %s\n' % str(format(avg_GLM_rel/avg_GLM_peaks * 100, '.3f')))
-    f.write('    --> Average percentage of MMIA matched peaks found per event: %s%%\n' % str(format(avg_MMIA_rel*100, '.3f')))
-    f.write('    --> MMIA matched peaks over MMIA peaks found per event: %s\n' % str(format(avg_MMIA_rel/avg_MMIA_peaks * 100, '.3f')))
+    f.write('    --> Average matched peaks found per event: %s\n' % str(format(avg_matching, '.3f')))
+    f.write('    --> Average percentage of GLM matched peaks over GLM peaks found per event: %s%%\n' % str(format(avg_GLM_rel*100, '.3f')))
+    #f.write('    --> Average GLM matched peaks over GLM peaks found per event: %s\n' % str(format(avg_GLM_rel/avg_GLM_peaks, '.3f')))
+    f.write('    --> Average percentage of MMIA matched peaks over MMIA peaks found per event: %s%%\n' % str(format(avg_MMIA_rel*100, '.3f')))
+    #f.write('    --> Average MMIA matched peaks over MMIA peaks found per event: %s\n' % str(format(avg_MMIA_rel/avg_MMIA_peaks, '.3f')))
     f.close()
-    print('Done!')
+    print(' ')
+    print('Done! Your final results can be accessed at ' + ssd_path + '/RESULTS.txt\n')
+    print(' ')
 
 def extract_trigger_info_v2(ssd_path, trigger_filenames, matches, current_day):
 

@@ -54,6 +54,8 @@ t_frame_L1=[];
 while zz<=n_files
     dirandfile=[str,files(zz).name];
     only_chu=0;
+
+    try
     INFO=spdfcdfinfo(dirandfile);
     L=spdfcdfinfo(dirandfile);
     DATA=spdfcdfread(dirandfile);
@@ -155,6 +157,10 @@ while zz<=n_files
         CHU1_pixel_latitude;
         CHU2_pixel_latitude;
         CHU2_pixel_longitude;
+    end
+    catch
+        warning_message = append('Problem with the file ', dirandfile);
+        warning(warning_message);
     end
         zz=zz+1;  %% Finaliza concatenacion de los fiecheros MMIA
 end
