@@ -6,7 +6,7 @@ dt_bin=0.002; % Intervalos las muestras cada 2 ms
 cnt=1;
 while t1<=t_end
     n=1;  % Número de subintervalos
-    t_bin=t1:dt_bin/n:t1+dt_bin;  % Subintervalos de división de la muestra
+    t_bin = t1 : dt_bin/n : t1+dt_bin;  % Subintervalos de división de la muestra
     for i=1:length(t_bin)-1
 
         f_in_MMIA=find(MMIA_(:,1)>=t_bin(i) & MMIA_(:,1)<(t_bin(i+1)));

@@ -27,16 +27,16 @@ first_execution = False
 show_plots = False
 
 # Boolean variable for pre-cross-correlated data
-pre_xc = False
+pre_xc = True
 
 # Boolean variable for pre-converted to top cloud energy
 pre_tce = False
 
 # Boolean variable for pre-detected peaks
-pre_detected_peaks = False
+pre_detected_peaks = True
 
 # Boolean variable for pre-studied peaks
-pre_studied = False
+pre_studied = True
 
 # Boolean variable for just outputting results
 just_results = False
@@ -62,7 +62,7 @@ matlab_path = '/Applications/MATLAB_R2021b.app/bin/matlab'
 ### GLM ###
 
 # Time in seconds to analyze GLM before and after MMIA's time snippet
-cropping_margin = 0.05
+cropping_margin = 0.04
 
 # Plus of angle in latitude and longitude to snip GLM data
 GLM_radius = 400 # [km]
@@ -81,10 +81,10 @@ pre_integrated_GLM = True
 ### MMIA ###
 
 # Boolean variable for pre-extracted files
-pre_extracted_MMIA = False
+pre_extracted_MMIA = True
 
 # Boolean variable for conditioning MMIA data if not done before
-pre_conditioned_MMIA = False
+pre_conditioned_MMIA = True
 
 # Maximum length in seconds of each event
 event_length = 2 # [s]
@@ -355,7 +355,7 @@ if just_results == False:
             del MMIA_std
             
         else:
-            print('GLM and MMIA data for day %s was pre-correlated. Uploading from %s/%s.pckl...' % (matches[day], xcorr_bin, matches[day]))
+            print('GLM and MMIA data for day %s was pre-correlated. Uploading from %s/%s.pckl...\n' % (matches[day], xcorr_bin, matches[day]))
             
             # Uploading signals
             f = open(xcorr_bin + '/' + matches[day] + '_signals.pckl', 'rb')
@@ -372,14 +372,23 @@ if just_results == False:
                 os.system('mkdir ' + tce_bin)
             
             # Convert GLM and MMIA data to Top Cloud Energy data
-            print('Converting GLM and MMIA instrumental data into Top Cloud Energy for day')
-            [glm_tce, mmia_tce] = TFG.top_cloud_energy(GLM_xcorr, MMIA_xcorr)
+            print('Converting GLM and MMIA instrumental data into Top Cloud Energy for day %s...' % matches[day])
+            [glm_tce, mmia_tce] = TFG.top_cloud_energy(GLM_xcorr, MMIA_xcorr, matches[day])
+            print('Done!\n')
             
             # Saving GLM and MMIA Top Cloud Energy data
+            print('Saving tce data for day %s...' % matches[day])
             f = open(tce_bin + '/' + matches[day] + '.pckl', 'wb')
             pickle.dump([glm_tce, mmia_tce], f)
             f.close()
+        
+        else:
+            print('Top Cloud Energy values were pre-calculated. Uploading from %s/%s.pckl...' % (matches[day], tce_bin, matches[day]))
 
+            # Uploading TCE signals
+            f = open(tce_bin + '/' + matches[day] + '.pckl', 'rb')
+            [glm_tce, mmia_tce] = pickle.load(f)
+            f.close()
 
 
         ########### PEAK DETECTION AND COMPARISON ###########
@@ -452,7 +461,7 @@ if pre_studied == False:
     os.system('mkdir ' + statistics_figures_path)
 
     show_plots = True
-    TFG.study_delays(statistics_bin, show_plots, statistics_figures_path, matches, ssd_path)
+    [delays, bins_count, cdf] = TFG.study_delays(statistics_bin, show_plots, statistics_figures_path, matches, ssd_path)
 
     TFG.more_statistics(peaks_bin, matches, ssd_path)
     show_plots = False
