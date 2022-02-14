@@ -35,10 +35,10 @@ pre_xc = False
 pre_tce = False
 
 # Boolean variable for pre-detected peaks
-pre_detected_peaks = True
+pre_detected_peaks = False
 
 # Boolean variable for pre-studied peaks
-pre_studied = True
+pre_studied = False
 
 # Boolean variable for just outputting results
 just_results = False
@@ -47,13 +47,13 @@ just_results = False
 pre_event_directories = True
 
 # Path to Hard Disk (with all MMIA files and where to store all files)
-#ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
-ssd_path = '/Users/jaimemorandominguez/Desktop/test_descarga_GLM'
+ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
+#ssd_path = '/Users/jaimemorandominguez/Desktop/test_descarga_GLM'
 #ssd_path = '/media/lrg'
 
 # Path where MMIA's .cdf files are located
-#MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
-MMIA_files_path = '/Users/jaimemorandominguez/Desktop/test_cdf'
+MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
+#MMIA_files_path = '/Users/jaimemorandominguez/Desktop/test_cdf'
 #MMIA_files_path = '/media/lrg/mmia_20'
 
 # Path to MATLAB executable
@@ -64,20 +64,20 @@ matlab_path = '/Applications/MATLAB_R2021b.app/bin/matlab'
 ### GLM ###
 
 # Time in seconds to analyze GLM before and after MMIA's time snippet
-cropping_margin = 0.04
+cropping_margin = 0.5
 
 # Plus of angle in latitude and longitude to snip GLM data
 GLM_radius = 400 # [km]
-angle_margin = GLM_radius / 111.11 # or a given value in degrees [º]
+angle_margin = GLM_radius / 111.11 # or a given value in degrees
 
 # Boolean variable for downloading GLM .nc files from Google Cloud Storage
 pre_downloaded_GLM = True
 
 # Boolean variable for pre-extracted files
-pre_extracted_GLM = True
+pre_extracted_GLM = False
 
 # Boolean variable for integrating GLM signals if not pre-done
-pre_integrated_GLM = True
+pre_integrated_GLM = False
 
 
 ### MMIA ###
@@ -107,7 +107,7 @@ mmia_threshold = 1.75   # [micro W / m^2]
 general_variables_path = ssd_path + '/general_variables_bin'
 xcorr_bin = ssd_path + '/xcorr_bin'
 xcorr_figures_path = ssd_path + '/xcorr_figures'
-tce_bin = ssd_path + '/top_cloud_energy_bin'
+tce_bin = ssd_path + '/tce_bin'
 tce_figures_path = ssd_path + '/tce_figures'
 peaks_bin = ssd_path + '/peaks_bin'
 peaks_figures_path = ssd_path + '/peaks_figures'
@@ -383,7 +383,7 @@ if just_results == False:
             show_plots = False
             
             # Saving GLM and MMIA Top Cloud Energy data
-            print('Saving tce data for day %s...' % matches[day])
+            print('Saving TCE data for day %s...\n' % matches[day])
             f = open(tce_bin + '/' + matches[day] + '.pckl', 'wb')
             pickle.dump([glm_tce, mmia_tce], f)
             f.close()

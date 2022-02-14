@@ -4,7 +4,7 @@ MMIA and GLM data and compare it.
 
 Please note every 'trigger' notation is an 'event'.
 
-@ Morán Domínguez, Jaime Francisco
+Morán Domínguez, Jaime Francisco
 jaime.francisco.moran@upc.edu
 '''
 
@@ -2091,8 +2091,16 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         plt.close('all')
         
         # Delays histogram for all delays
+        
+        # Sturges rule
+        R = max(delays_s_vec) - min(delays_s_vec)   # Range
+        bins_num = 1 + math.log(R,2)                # Sturges rule
+        bins_num = math.ceil(bins_num)              # Approximation
+        if bins_num%2 != 0:
+            bins_num = bins_num - 1
+        
         plt.figure()
-        plt.hist(delays_s_vec, bins = 50, rwidth=0.85)
+        plt.hist(delays_s_vec, bins = bins_num, rwidth=0.85)
         plt.title('All Delay Histogram')
         plt.xlabel('Delay [s]')
         plt.ylabel('Frequency')
@@ -2106,7 +2114,7 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         # Closes all the figure windows
         plt.close('all')
         
-        # Delays histogram for all delays
+        # Delays histogram for all delays in range
         plt.figure()
         plt.hist(delays_s_vec, bins = 50, range = [-0.05, 0.05], rwidth=0.85)
         plt.title('Delay Histogram (up to 0.05s of absolute delay)')
@@ -2124,19 +2132,35 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         
         delays_s_vec = np.array(delays_s_vec)
         delays_s_vec = abs(delays_s_vec)
-        count, bins_count = np.histogram(delays_s_vec, bins=100,range = [0, 1])
-        pdf = count / sum(count)
+        count, bins_count = np.histogram(delays_s_vec, bins=100)
+        pdf = count / sum(count)    # Range 0-1
         cdf = np.cumsum(pdf)
         
-        # Delays histogram for all delays
+        # Cumulative Curve for all delays
         plt.figure()
         plt.plot(bins_count[1:], cdf, label="CDF")
-        plt.title('Delay Histogram (up to 0.05s of absolute delay)')
+        plt.title('Cumulative Curve')
         plt.xlabel('Delay [s]')
-        plt.ylabel('Frequency')
+        plt.ylabel('Cumulative Frequency')
         plt.grid('on')
         #plt.show()
-        plt.savefig(statistics_figures_path + '/cumulative.pdf')
+        plt.savefig(statistics_figures_path + '/cumulative_all.pdf')
+        # Clear the current axes
+        plt.cla() 
+        # Clear the current figure
+        plt.clf() 
+        # Closes all the figure windows
+        plt.close('all')
+        
+        # Cumulative Curve up to 1s for all delays
+        plt.figure()
+        plt.plot(bins_count[1:], cdf, label="CDF", range=[0,1])
+        plt.title('Cumulative Curve (up to 1s of absolute delay)')
+        plt.xlabel('Delay [s]')
+        plt.ylabel('Cumulative Frequency')
+        plt.grid('on')
+        #plt.show()
+        plt.savefig(statistics_figures_path + '/inrange_cumulative.pdf')
         # Clear the current axes
         plt.cla() 
         # Clear the current figure
@@ -2217,9 +2241,11 @@ def simpson_integral(signal, t1, t_end):
     int_signal[0] = []
     int_signal[1] = []
     
+    print(len(signal))
+    
     while t1 <= t_end:
         
-        n = 1
+        n = 10
         t_bin = np.arange(t1, t1+dt_bin, dt_bin/n) # Subintervalos de division de la muestra
         
         for i in range(len(t_bin)-1):
@@ -2274,14 +2300,16 @@ def top_cloud_energy(GLM_xcorr, MMIA_xcorr, current_day, show_plots, tce_figures
             MMIA_cloud_E = simpson_integral(MMIA_xcorr[i], t1, t_end)
 
             MMIA_cloud_E[:,1] = (MMIA_cloud_E[:,1]*1e-6)*math.pi*400e3**2 #(Van der velde et al 2020)
+            
+            # Returning to MMIA sample rate
             mmia_tce[i] = fit_vector_in_MMIA_timesteps(MMIA_cloud_E, int(current_day), i, False, 1)
             del MMIA_cloud_E
             
             if show_plots == True:
                 plt.figure()
                 figure_name = current_day + '_' + str(i)
-                plt.plot(glm_tce[0][:,0], glm_tce[0][:,1], color='black')
-                plt.plot(mmia_tce[0][:,0], mmia_tce[0][:,1], color='red')
+                plt.plot(glm_tce[i][:,0], glm_tce[i][:,1], color='black')
+                plt.plot(mmia_tce[i][:,0], mmia_tce[i][:,1], color='red')
                 plt.legend(['GLM','MMIA'])
                 plt.title('GLM (black) and MMIA (red) correlated signals converted to Top Cloud Energy for day %s event %d' % (current_day, i))
                 plt.xlabel('Time [s]')
