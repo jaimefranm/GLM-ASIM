@@ -146,9 +146,6 @@ def extract_event_info(path_to_mmia_dirs, mmia_mats_files_path, matlab_path):
     os.system("echo '" + mmia_mats_files_path + "'/ > mmia_mats_path.txt")
     
     # Executing MATLAB
-    #eng = matlab.engine.start_matlab()
-    #eng.MMIA_extraction(nargout=0)
-    #eng.quit()
     my_string = '\"' + matlab_path + '\" -nojvm -nodisplay -nosplash -nodesktop -r \"MMIA_extraction; quit;\"'
     os.system(my_string)
     
@@ -1246,7 +1243,7 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
                 plt.plot(current_MMIA[:,0], current_MMIA[:,1], color = 'r', linewidth = 0.5)
                 plt.plot(current_GLM[:,0], current_GLM[:,1], color = 'black', linewidth = 1)
                 plt.legend(['MMIA','GLM'])
-                plt.title('GLM (black) and MMIA (red) non-correlated normalized signals for day %d trigger %d' % (int(matches[current_day]), j))
+                plt.title('GLM (black) and MMIA (red) non-correlated normalized signals for day %d event %d' % (int(matches[current_day]), j))
                 plt.xlabel('Time [s]')
                 plt.ylabel('Normalized energy')
                 plt.grid('on')
@@ -1315,7 +1312,7 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
                 plt.plot(MMIA_xc[:,0], MMIA_xc[:,1], color = 'r', linewidth = 0.5)
                 plt.plot(GLM_xc[:,0], GLM_xc[:,1], color = 'black', linewidth = 1)
                 plt.legend(['MMIA','GLM'])
-                plt.title('GLM (black) and MMIA (red) correlated normalized signals for day %d trigger %d' % (int(matches[current_day]), j))
+                plt.title('GLM (black) and MMIA (red) correlated normalized signals for day %d event %d' % (int(matches[current_day]), j))
                 plt.xlabel('Time [s]')
                 plt.ylabel('Normalized energy')
                 plt.grid('on')
@@ -1961,11 +1958,20 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
     f.write('    --> Average delay in samples (accounting for positive and negative values): %s +- %s\n' % (str(format(avg_all, '.3f')), str(format(std_all, '.3f'))))
     f.write('    --> Average delay in seconds (accounting for positive and negative values): %s +- %s\n' % (str(format(avg_all*0.00001, '.3f')), str(format(std_all*0.00001, '.3f'))))
     f.write('    --> Number of MMIA delays: %d (%s%% over valid events)\n' % (len(MMIA_delays), str(format(len(MMIA_delays)/valid_triggers*100, '.3f'))))
-    f.write('       --> Average MMIA delay in samples: %s +- %s\n' % (str(format(avg_negative, '.3f')), str(format(std_negative, '.3f'))))
-    f.write('       --> Average MMIA delay in seconds: %s +- %s\n' % (str(format(avg_negative*0.00001, '.3f')), str(format(std_negative*0.00001, '.3f'))))
+    if 'avg_negative' in locals():
+        f.write('       --> Average MMIA delay in samples: %s +- %s\n' % (str(format(avg_negative, '.3f')), str(format(std_negative, '.3f'))))
+        f.write('       --> Average MMIA delay in seconds: %s +- %s\n' % (str(format(avg_negative*0.00001, '.3f')), str(format(std_negative*0.00001, '.3f'))))
+    else:
+        f.write('       --> Average MMIA delay in samples: -')
+        f.write('       --> Average MMIA delay in seconds: -')
+        
     f.write('    --> Number of MMIA anticipations: %d (%s%% over valid events)\n' % (len(GLM_delays), str(format(len(GLM_delays)/valid_triggers*100, '.3f'))))
-    f.write('       --> Average MMIA anticipation in samples: %s +- %s\n' % (str(format(avg_positive, '.3f')), str(format(std_positive, '.3f'))))
-    f.write('       --> Average MMIA anticipation in seconds: %s +- %s\n' % (str(format(avg_positive*0.00001, '.3f')), str(format(std_positive*0.00001, '.3f'))))
+    if 'avg_positive' in locals():
+        f.write('       --> Average MMIA anticipation in samples: %s +- %s\n' % (str(format(avg_positive, '.3f')), str(format(std_positive, '.3f'))))
+        f.write('       --> Average MMIA anticipation in seconds: %s +- %s\n' % (str(format(avg_positive*0.00001, '.3f')), str(format(std_positive*0.00001, '.3f'))))
+    else:
+        f.write('       --> Average MMIA anticipation in samples: -')
+        f.write('       --> Average MMIA anticipation in seconds: -')
     f.write('    --> Number of no delays: %d (%s%%)\n' % (len(no_delays), str(format(len(no_delays)/valid_triggers*100, '.3f'))))
     f.close()
     print('Done!\n')
@@ -2135,7 +2141,7 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         # Closes all the figure windows
         plt.close('all')
         
-    return [delays, bins_count, cdf]
+    #return [delays, bins_count, cdf]
 
 def more_statistics(peaks_bin, matches, ssd_path):
     
@@ -2211,12 +2217,11 @@ def simpson_integral(signal, t1, t_end):
     while t1 <= t_end:
         
         n = 1
-        t_bin = range(t1, t1+dt_bin, dt_bin/n) # Subintervalos de division de la muestra
-        int_signal = np.zeros((len(t_bin), 2))
+        t_bin = np.arange(t1, t1+dt_bin, dt_bin/n) # Subintervalos de division de la muestra
         
         for i in range(len(t_bin)-1):
 
-            f_in_signal = np.where(signal[:,0] >= t_bin[i] and signal[:,0] < t_bin[i+1])
+            f_in_signal = np.where((signal[:,0] >= t_bin[i]) & (signal[:,0] < t_bin[i+1]))[0]
 
             if len(f_in_signal) == 0:
                 
@@ -2227,10 +2232,8 @@ def simpson_integral(signal, t1, t_end):
                 
             else:
                 
-                int_signal[0].append(t_bin[1])
-                int_signal[1].append(np.trapz(signal[f_in_signal,4])*1e-5)
-                #int_signal[cnt,0] = t_bin[1] # Van der velde et al 2020
-                #int_signal[cnt,1] = np.trapz(signal[f_in_signal,4])*1e-5 # 777 nm uJ m-2 in a 10 us exposure integrated with trapezium rule over bin of 2 ms
+                int_signal[0].append(t_bin[0])  # Van der velde et al 2020
+                int_signal[1].append(np.trapz(signal[f_in_signal,1])*1e-5) # 777 nm uJ m-2 in a 10 us exposure integrated with trapezium rule over bin of 2 ms
             
             cnt = cnt+1
 
@@ -2244,7 +2247,7 @@ def simpson_integral(signal, t1, t_end):
         
     return int_final_signal
 
-def top_cloud_energy(GLM_xcorr, MMIA_xcorr, current_day):
+def top_cloud_energy(GLM_xcorr, MMIA_xcorr, current_day, show_plots, tce_figures_path):
     
     glm_tce = [None] * len(GLM_xcorr)
     mmia_tce = [None] * len(MMIA_xcorr)
@@ -2262,59 +2265,35 @@ def top_cloud_energy(GLM_xcorr, MMIA_xcorr, current_day):
 
             # MMIA
             t1 = MMIA_xcorr[i][0,0]
-            t_end = MMIA_xcorr[i][0,-1]
-            #n = 10000 # (????)
+            t_end = MMIA_xcorr[i][-1,0]
             
             # Computing a Simpson integral over MMIA signal
-            MMIA_cloud_E = TFG.simpson_integral(MMIA_xcorr[i], t1, t_end)
+            MMIA_cloud_E = simpson_integral(MMIA_xcorr[i], t1, t_end)
 
             MMIA_cloud_E[:,1] = (MMIA_cloud_E[:,1]*1e-6)*math.pi*400e3**2 #(Van der velde et al 2020)
-            mmia_tce[i] = MMIA_cloud_E
+            mmia_tce[i] = fit_vector_in_MMIA_timesteps(MMIA_cloud_E, int(current_day), i, False, 1)
             del MMIA_cloud_E
+            
+            if show_plots == True:
+                plt.figure()
+                figure_name = current_day + '_' + str(i)
+                plt.plot(glm_tce[0][:,0], glm_tce[0][:,1], color='black')
+                plt.plot(mmia_tce[0][:,0], mmia_tce[0][:,1], color='red')
+                plt.legend(['GLM','MMIA'])
+                plt.title('GLM (black) and MMIA (red) correlated signals converted to Top Cloud Energy for day %s event %d' % (current_day, i))
+                plt.xlabel('Time [s]')
+                plt.ylabel('Top Cloud Energy')
+                plt.grid('on')
+                plt.savefig(tce_figures_path + '/' + figure_name + '.pdf')
+                #plt.show()
+                # Clear the current axes
+                plt.cla() 
+                # Clear the current figure
+                plt.clf() 
+                # Closes all the figure windows
+                plt.close('all')
             
         else:
             print('Signals for day %s event %d could not be correlated, so no conversion is possible' % (current_day, i))
     
     return [glm_tce, mmia_tce]
-
-def extract_trigger_info_v2(ssd_path, trigger_filenames, matches, current_day):
-
-    mmia_mat_files_path = ssd_path + '/mmia_mat'
-    
-    if current_day == 0:
-        os.system('mkdir ' + mmia_mat_files_path)
-
-    trigger_limits = [None] * len(trigger_filenames[current_day])
-    mmia_raw = [None] * len(trigger_filenames[current_day])
-
-    # Extracting data for every trigger
-    for j in range(len(trigger_filenames[current_day])):
-
-        print('Starting the MatLab engine and extracting data from .cdf files for day %d (%d / %d), trigger %d / %d...' % (int(matches[current_day]), current_day+1, len(matches), j, len(trigger_filenames[current_day])))
-        eng = matlab.engine.start_matlab()
-        path = ssd_path + '/mmia_dirs/' + matches[current_day] + '_' + str(j) + '/'
-        eng.workspace['str'] = path
-        eng.MMIA_symplified_v5(nargout=0)
-        eng.quit()
-        wd = os.getcwd()
-
-        with os.scandir(wd) as files:
-            files = [file.name for file in files if file.is_file() and file.name.endswith('.mat')]
-
-        if len(files) != 0:
-
-            os.system('mv '+wd+'/MMIA_data.mat ' + mmia_mat_files_path+'/'+matches[current_day]+'_' + str(j) +'_data.mat')
-            os.system('mv '+wd+'/MMIA_space_time.mat ' + mmia_mat_files_path+'/'+matches[current_day]+'_' + str(j) +'_info.mat')
-
-            # Filling mmia raw data and trigger info variables
-            data_mat = sio.loadmat(mmia_mat_files_path+'/'+matches[current_day]+'_' + str(j) +'_data.mat')
-            info_mat = sio.loadmat(mmia_mat_files_path+'/'+matches[current_day]+'_' + str(j) +'_info.mat')
-            current_data = data_mat.get('MMIA_all')
-            current_info = info_mat.get('space_time')
-            mmia_raw[j] = current_data
-            trigger_limits[j] = current_info
-        else:
-            print('No MMIA data could be extracted for day %s trigger %d' % (matches[current_day], j))
-    print(' ')  # For separating dates
-
-    return [mmia_raw, trigger_limits]

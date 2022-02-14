@@ -5,11 +5,13 @@ import os
 
 # Just for plot presentation in LaTeX Style (slows the program)
 #plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
-'''
-
-# TODO: Pasar a top cloud energy
 
 '''
+# TODO: Validar TCE
+# TODO: Iterar cross-correlation
+# TODO: Histogramas bien (relativo y acumulado)
+'''
+
 
 '''
 ###################################################
@@ -30,7 +32,7 @@ show_plots = False
 pre_xc = True
 
 # Boolean variable for pre-converted to top cloud energy
-pre_tce = False
+pre_tce = True
 
 # Boolean variable for pre-detected peaks
 pre_detected_peaks = True
@@ -45,13 +47,13 @@ just_results = False
 pre_event_directories = True
 
 # Path to Hard Disk (with all MMIA files and where to store all files)
-ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
-#ssd_path = '/Users/jaimemorandominguez/Desktop/test_descarga_GLM'
+#ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
+ssd_path = '/Users/jaimemorandominguez/Desktop/test_descarga_GLM'
 #ssd_path = '/media/lrg'
 
 # Path where MMIA's .cdf files are located
-MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
-#MMIA_files_path = '/Users/jaimemorandominguez/Desktop/test_cdf'
+#MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
+MMIA_files_path = '/Users/jaimemorandominguez/Desktop/test_cdf'
 #MMIA_files_path = '/media/lrg/mmia_20'
 
 # Path to MATLAB executable
@@ -106,6 +108,7 @@ general_variables_path = ssd_path + '/general_variables_bin'
 xcorr_bin = ssd_path + '/xcorr_bin'
 xcorr_figures_path = ssd_path + '/xcorr_figures'
 tce_bin = ssd_path + '/top_cloud_energy_bin'
+tce_figures_path = ssd_path + '/tce_figures'
 peaks_bin = ssd_path + '/peaks_bin'
 peaks_figures_path = ssd_path + '/peaks_figures'
 statistics_bin = ssd_path + '/stats_bin'
@@ -370,11 +373,14 @@ if just_results == False:
 
             if day == 0:
                 os.system('mkdir ' + tce_bin)
+                os.system('mkdir ' + tce_figures_path)
             
             # Convert GLM and MMIA data to Top Cloud Energy data
+            show_plots = True
             print('Converting GLM and MMIA instrumental data into Top Cloud Energy for day %s...' % matches[day])
-            [glm_tce, mmia_tce] = TFG.top_cloud_energy(GLM_xcorr, MMIA_xcorr, matches[day])
+            [glm_tce, mmia_tce] = TFG.top_cloud_energy(GLM_xcorr, MMIA_xcorr, matches[day], show_plots, tce_figures_path)
             print('Done!\n')
+            show_plots = False
             
             # Saving GLM and MMIA Top Cloud Energy data
             print('Saving tce data for day %s...' % matches[day])
@@ -383,7 +389,7 @@ if just_results == False:
             f.close()
         
         else:
-            print('Top Cloud Energy values were pre-calculated. Uploading from %s/%s.pckl...' % (matches[day], tce_bin, matches[day]))
+            print('Top Cloud Energy values were pre-calculated. Uploading from %s/%s.pckl...' % (tce_bin, matches[day]))
 
             # Uploading TCE signals
             f = open(tce_bin + '/' + matches[day] + '.pckl', 'rb')
@@ -461,7 +467,8 @@ if pre_studied == False:
     os.system('mkdir ' + statistics_figures_path)
 
     show_plots = True
-    [delays, bins_count, cdf] = TFG.study_delays(statistics_bin, show_plots, statistics_figures_path, matches, ssd_path)
+    TFG.study_delays(statistics_bin, show_plots, statistics_figures_path, matches, ssd_path)
+    #[delays, bins_count, cdf] = TFG.study_delays(statistics_bin, show_plots, statistics_figures_path, matches, ssd_path)
 
     TFG.more_statistics(peaks_bin, matches, ssd_path)
     show_plots = False
