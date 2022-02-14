@@ -29,10 +29,10 @@ first_execution = False
 show_plots = False
 
 # Boolean variable for pre-cross-correlated data
-pre_xc = True
+pre_xc = False
 
 # Boolean variable for pre-converted to top cloud energy
-pre_tce = True
+pre_tce = False
 
 # Boolean variable for pre-detected peaks
 pre_detected_peaks = True
@@ -58,7 +58,7 @@ MMIA_files_path = '/Users/jaimemorandominguez/Desktop/test_cdf'
 
 # Path to MATLAB executable
 matlab_path = '/Applications/MATLAB_R2021b.app/bin/matlab'
-#matlab_path = '/usr/local/bin/matlab'
+#matlab_path = '/usr/local/MATLAB/R2021b/bin/matlab'
 
 
 ### GLM ###
