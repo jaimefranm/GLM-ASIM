@@ -189,7 +189,7 @@ if just_results == False:
     #########################################################################################################
 
 
-    for day in range(60,len(matches)):
+    for day in range(len(matches)):
         print(' ')
         print('******************************')
         print('DAY %s, %d of %d' % (matches[day], day+1, len(matches)))

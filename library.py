@@ -1268,27 +1268,34 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
             max_viable_delay = 8000
             counter = 0
             it_current_GLM = current_GLM
+            it_current_MMIA = current_MMIA
             
             while abs(delay) >= max_viable_delay and counter < 1000 and len(it_current_GLM) > delay_crop:
                 
-                delay = int(TFG.signal_delay(it_current_GLM, current_MMIA, show_plots, int(matches[current_day]), j))
+                delay = int(TFG.signal_delay(it_current_GLM, it_current_MMIA, show_plots, int(matches[current_day]), j))
                 counter = counter+1
                 
                 if abs(delay) >= max_viable_delay and counter == 1:
                     
-                    # Crop GLM first
-                    try:
+                    # Crop GLM and MMIA first
+                    try: # Try to find where in GLM the MMIA signal starts
                         MMIA_start_in_GLM_pos = np.where(current_GLM[:,0] <= current_MMIA[0,0])[0][-1]
-                    except IndexError:
+                        GLM_start_in_MMIA_pos = 0
+                    except IndexError: # MMIA signal actually starts before GLM signal
                         MMIA_start_in_GLM_pos = 0
+                        GLM_start_in_MMIA_pos = np.where(current_MMIA[:,0] <= current_GLM[0,0])[0][-1]
                     
-                    try:
+                    try: # Try to find where in GLM the MMIA signal ends
                         MMIA_end_in_GLM_pos = np.where(current_GLM[:,0] <= current_MMIA[-1,0])[0][-1]
-                    except IndexError:
+                        GLM_end_in_MMIA_pos = -1
+                    except IndexError: # MMIA signal actually ends after GLM signal
                         MMIA_end_in_GLM_pos = -1
+                        GLM_end_in_MMIA_pos = np.where(current_MMIA[:,0] <= current_GLM[-1,0])[0][-1]
                     
                     del it_current_GLM
+                    del it_current_MMIA
                     it_current_GLM = current_GLM[MMIA_start_in_GLM_pos:MMIA_end_in_GLM_pos,:]
+                    it_current_MMIA = current_MMIA[GLM_start_in_MMIA_pos:GLM_end_in_MMIA_pos,:]
                     
                 if abs(delay) >= max_viable_delay and counter > 1:
                     
@@ -1310,6 +1317,7 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
                         del new_current_GLM
                         
             del it_current_GLM
+            del it_current_MMIA
             
             delays[j] = delay
 
