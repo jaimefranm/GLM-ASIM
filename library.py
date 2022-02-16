@@ -1266,30 +1266,50 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
             delay = 100000  # Very high delay value in order to enter the while loop
             delay_crop = 5000
             max_viable_delay = 8000
-            counter = 1
+            counter = 0
+            it_current_GLM = current_GLM
             
-            while abs(delay) >= max_viable_delay and counter < 100:
+            while abs(delay) >= max_viable_delay and counter < 1000 and len(it_current_GLM) > delay_crop:
                 
-                delay = int(TFG.signal_delay(current_GLM, current_MMIA, show_plots, int(matches[current_day]), j))
+                delay = int(TFG.signal_delay(it_current_GLM, current_MMIA, show_plots, int(matches[current_day]), j))
                 counter = counter+1
                 
-                if abs(delay) >= max_viable_delay and len(current_GLM) > delay_crop:
-
-                    new_GLM_length = len(current_GLM) - delay_crop
+                if abs(delay) >= max_viable_delay and counter == 1:
+                    
+                    # Crop GLM first
+                    try:
+                        MMIA_start_in_GLM_pos = np.where(current_GLM[:,0] <= current_MMIA[0,0])[0][-1]
+                    except IndexError:
+                        MMIA_start_in_GLM_pos = 0
+                    
+                    try:
+                        MMIA_end_in_GLM_pos = np.where(current_GLM[:,0] <= current_MMIA[-1,0])[0][-1]
+                    except IndexError:
+                        MMIA_end_in_GLM_pos = -1
+                    
+                    del it_current_GLM
+                    it_current_GLM = current_GLM[MMIA_start_in_GLM_pos:MMIA_end_in_GLM_pos,:]
+                    
+                if abs(delay) >= max_viable_delay and counter > 1:
+                    
+                    new_GLM_length = len(it_current_GLM) - delay_crop
                     new_current_GLM = np.zeros((new_GLM_length,2))
-                    #new_current_GLM[:,:] = current_GLM[delay_crop:new_GLM_length+delay_crop, :]
-                    #del current_GLM 
-                    #current_GLM = new_current_GLM
+                    #new_current_GLM[:,:] = it_current_GLM[delay_crop:new_GLM_length+delay_crop, :]
+                    #del it_current_GLM 
                     
                     if delay < 0:      # MMIA delays too far from time accuracy
-                        new_current_GLM[:,:] = current_GLM[0:new_GLM_length, :]
-                        del current_GLM 
-                        current_GLM = new_current_GLM
+                        new_current_GLM[:,:] = it_current_GLM[0:new_GLM_length, :]
+                        del it_current_GLM
+                        it_current_GLM = new_current_GLM
+                        del new_current_GLM
                         
                     elif delay > 0:    # MMIA anticipates too far from time accuracy
-                        new_current_GLM[:,:] = current_GLM[delay_crop:len(current_GLM), :]
-                        del current_GLM 
-                        current_GLM = new_current_GLM
+                        new_current_GLM[:,:] = it_current_GLM[delay_crop:len(it_current_GLM), :]
+                        del it_current_GLM
+                        it_current_GLM = new_current_GLM
+                        del new_current_GLM
+                        
+            del it_current_GLM
             
             delays[j] = delay
 
@@ -1776,7 +1796,7 @@ def get_peak_matches(GLM_xcorr, GLM_xcorr_norm, MMIA_xcorr, MMIA_xcorr_norm, GLM
                 plt.title('GLM (black) and MMIA (red) peaks and common peaks on day %s, event %d' % (matches[current_day], j))
                 plt.xlabel('Samples')
                 plt.ylabel("Normalized Energy")
-                plt.legend(['GLM corr norm signal', 'GLM peaks', 'GLM matching peaks', 'MMIA corr norm signal', 'MMIA peaks', 'MMIA matching peaks'])
+                plt.legend(['MMIA corr norm signal', 'MMIA peaks', 'MMIA matching peaks', 'GLM corr norm signal', 'GLM peaks', 'GLM matching peaks'])
                 plt.grid('on')
                 #plt.show()
                 plt.savefig(match_figs_path + '/' + figure_name + '_both_match.pdf')
@@ -1965,16 +1985,16 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         f.write('       --> Average MMIA delay in samples: %s +- %s\n' % (str(format(avg_negative, '.3f')), str(format(std_negative, '.3f'))))
         f.write('       --> Average MMIA delay in seconds: %s +- %s\n' % (str(format(avg_negative*0.00001, '.3f')), str(format(std_negative*0.00001, '.3f'))))
     else:
-        f.write('       --> Average MMIA delay in samples: -')
-        f.write('       --> Average MMIA delay in seconds: -')
+        f.write('       --> Average MMIA delay in samples: -\n')
+        f.write('       --> Average MMIA delay in seconds: -\n')
         
     f.write('    --> Number of MMIA anticipations: %d (%s%% over valid events)\n' % (len(GLM_delays), str(format(len(GLM_delays)/valid_triggers*100, '.3f'))))
     if 'avg_positive' in locals():
         f.write('       --> Average MMIA anticipation in samples: %s +- %s\n' % (str(format(avg_positive, '.3f')), str(format(std_positive, '.3f'))))
         f.write('       --> Average MMIA anticipation in seconds: %s +- %s\n' % (str(format(avg_positive*0.00001, '.3f')), str(format(std_positive*0.00001, '.3f'))))
     else:
-        f.write('       --> Average MMIA anticipation in samples: -')
-        f.write('       --> Average MMIA anticipation in seconds: -')
+        f.write('       --> Average MMIA anticipation in samples: -\n')
+        f.write('       --> Average MMIA anticipation in seconds: -\n')
     f.write('    --> Number of no delays: %d (%s%%)\n' % (len(no_delays), str(format(len(no_delays)/valid_triggers*100, '.3f'))))
     f.close()
     print('Done!\n')
@@ -2013,22 +2033,23 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         plt.close('all')
         
         # Averaging in delays
-        fig = plt.figure(dpi=800)
-        ax = fig.add_axes([0,0,1,1])
-        langs = ['Avg. Delay', 'Avg. MMIA Delay', 'Avg. MMIA Anticipation']
-        data = [avg_all*0.00001, avg_negative*0.00001, avg_positive*0.00001]
-        plt.grid('on')
-        colors = ['tab:blue', 'darksalmon', 'slategrey']
-        ax.set_ylabel('Delay [s]')
-        ax.bar(langs,data, color=colors, yerr=[std_all*0.00001,std_negative*0.00001,std_positive*0.00001])
-        #plt.show()
-        plt.savefig(statistics_figures_path + '/avg_delays.pdf')
-        # Clear the current axes
-        plt.cla() 
-        # Clear the current figure
-        plt.clf() 
-        # Closes all the figure windows
-        plt.close('all')
+        if ('avg_positive' in locals()) and ('avg_positive' in locals()):
+            fig = plt.figure(dpi=800)
+            ax = fig.add_axes([0,0,1,1])
+            langs = ['Avg. Delay', 'Avg. MMIA Delay', 'Avg. MMIA Anticipation']
+            data = [avg_all*0.00001, avg_negative*0.00001, avg_positive*0.00001]
+            plt.grid('on')
+            colors = ['tab:blue', 'darksalmon', 'slategrey']
+            ax.set_ylabel('Delay [s]')
+            ax.bar(langs,data, color=colors, yerr=[std_all*0.00001,std_negative*0.00001,std_positive*0.00001])
+            #plt.show()
+            plt.savefig(statistics_figures_path + '/avg_delays.pdf')
+            # Clear the current axes
+            plt.cla() 
+            # Clear the current figure
+            plt.clf() 
+            # Closes all the figure windows
+            plt.close('all')
         
         # GLM delay vs GLM avg energy
         plt.figure()
@@ -2152,9 +2173,13 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         # Closes all the figure windows
         plt.close('all')
         
+        count, bins_count = np.histogram(delays_s_vec, bins=100, range=[0,1])
+        pdf = count / sum(count)    # Relative range 0-1
+        cdf = np.cumsum(pdf)
+        
         # Cumulative Curve up to 1s for all delays
         plt.figure()
-        plt.plot(bins_count[1:], cdf, label="CDF", range=[0,1])
+        plt.plot(bins_count[1:], cdf, label="CDF")
         plt.title('Cumulative Curve (up to 1s of absolute delay)')
         plt.xlabel('Delay [s]')
         plt.ylabel('Cumulative Frequency')
@@ -2167,8 +2192,6 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         plt.clf() 
         # Closes all the figure windows
         plt.close('all')
-        
-    #return [delays, bins_count, cdf]
 
 def more_statistics(peaks_bin, matches, ssd_path):
     
@@ -2241,8 +2264,6 @@ def simpson_integral(signal, t1, t_end):
     int_signal[0] = []
     int_signal[1] = []
     
-    print(len(signal))
-    
     while t1 <= t_end:
         
         n = 10
@@ -2284,7 +2305,7 @@ def top_cloud_energy(GLM_xcorr, MMIA_xcorr, current_day, show_plots, tce_figures
     for i in range(len(GLM_xcorr)): # For every event
     
         if type(GLM_xcorr[i]) == np.ndarray:
-            print('Converting intstrumental signals to Top Cloud Energy for day %s event %d' % (current_day, i))
+            print('Converting instrumental signals to Top Cloud Energy for day %s event %d / %d' % (current_day, i, len(GLM_xcorr)))
             # GLM
             glm_pix_size = 8*8 # [km^2]
             GLM_cloud_E = GLM_xcorr[i]
@@ -2308,8 +2329,8 @@ def top_cloud_energy(GLM_xcorr, MMIA_xcorr, current_day, show_plots, tce_figures
             if show_plots == True:
                 plt.figure()
                 figure_name = current_day + '_' + str(i)
-                plt.plot(glm_tce[i][:,0], glm_tce[i][:,1], color='black')
-                plt.plot(mmia_tce[i][:,0], mmia_tce[i][:,1], color='red')
+                plt.plot(glm_tce[i][:,0], glm_tce[i][:,1], color='black', linewidth=0.5)
+                plt.plot(mmia_tce[i][:,0], mmia_tce[i][:,1], color='red', linewidth=0.5)
                 plt.legend(['GLM','MMIA'])
                 plt.title('GLM (black) and MMIA (red) correlated signals converted to Top Cloud Energy for day %s event %d' % (current_day, i))
                 plt.xlabel('Time [s]')

@@ -9,7 +9,7 @@ import os
 '''
 # TODO: Validar TCE
 # TODO: Iterar cross-correlation
-# TODO: Histogramas bien (relativo y acumulado)
+# TODO: Comprobar Pixel size y Factor división angle_margin para USA
 '''
 
 
@@ -47,13 +47,13 @@ just_results = False
 pre_event_directories = True
 
 # Path to Hard Disk (with all MMIA files and where to store all files)
-ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
-#ssd_path = '/Users/jaimemorandominguez/Desktop/test_descarga_GLM'
+#ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
+ssd_path = '/Users/jaimemorandominguez/Desktop/test_descarga_GLM_2'
 #ssd_path = '/media/lrg'
 
 # Path where MMIA's .cdf files are located
-MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
-#MMIA_files_path = '/Users/jaimemorandominguez/Desktop/test_cdf'
+#MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
+MMIA_files_path = '/Users/jaimemorandominguez/Desktop/super_delays'
 #MMIA_files_path = '/media/lrg/mmia_20'
 
 # Path to MATLAB executable
@@ -71,7 +71,7 @@ GLM_radius = 400 # [km]
 angle_margin = GLM_radius / 111.11 # or a given value in degrees
 
 # Boolean variable for downloading GLM .nc files from Google Cloud Storage
-pre_downloaded_GLM = True
+pre_downloaded_GLM = False
 
 # Boolean variable for pre-extracted files
 pre_extracted_GLM = False
@@ -86,7 +86,7 @@ pre_integrated_GLM = False
 pre_extracted_MMIA = True
 
 # Boolean variable for conditioning MMIA data if not done before
-pre_conditioned_MMIA = True
+pre_conditioned_MMIA = False
 
 # Maximum length in seconds of each event
 event_length = 2 # [s]
@@ -189,7 +189,7 @@ if just_results == False:
     #########################################################################################################
 
 
-    for day in range(len(matches)):
+    for day in range(60,len(matches)):
         print(' ')
         print('******************************')
         print('DAY %s, %d of %d' % (matches[day], day+1, len(matches)))
@@ -377,7 +377,7 @@ if just_results == False:
             
             # Convert GLM and MMIA data to Top Cloud Energy data
             show_plots = True
-            print('Converting GLM and MMIA instrumental data into Top Cloud Energy for day %s...' % matches[day])
+            print('Converting GLM and MMIA instrumental data into Top Cloud Energy for day %s\n' % matches[day])
             [glm_tce, mmia_tce] = TFG.top_cloud_energy(GLM_xcorr, MMIA_xcorr, matches[day], show_plots, tce_figures_path)
             print('Done!\n')
             show_plots = False
@@ -468,7 +468,6 @@ if pre_studied == False:
 
     show_plots = True
     TFG.study_delays(statistics_bin, show_plots, statistics_figures_path, matches, ssd_path)
-    #[delays, bins_count, cdf] = TFG.study_delays(statistics_bin, show_plots, statistics_figures_path, matches, ssd_path)
 
     TFG.more_statistics(peaks_bin, matches, ssd_path)
     show_plots = False
