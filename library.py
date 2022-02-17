@@ -1160,6 +1160,8 @@ def condition_MMIA_data(MMIA_data, matches, show_plots, mmia_threshold, current_
                 MMIA_filtered[j] = TFG.fit_vector_in_MMIA_timesteps(current_data, int(matches[current_day]), j, 1, 1)
                 #MMIA_filtered[i][j] = current_data
                 
+                #split_MMIA_events(MMIA_filtered[j])                
+                
                 if show_plots == 1:
                     # MMIA representation with filter and with rectified time
                     plt.figure()
@@ -1214,7 +1216,7 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
         List of daily lists of delay between GLM and MMIA signal per snippet.
     '''
 
-    print('Starting cross-correlation of snippets and syncronization of signals...')
+    print('Starting cross-correlation of events and syncronization of signals...')
     print(' ')
 
     # Creation of new lists for daily GLM and MMIA cross-correlated data
@@ -1232,7 +1234,14 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
         # If there's no info for this snippet due to lack of .nc or .cdf files
 
         if type(GLM_snippets[j]) == np.ndarray and type(MMIA_snippets[j]) == np.ndarray:
-
+            
+            GLM_starts_after_MMIA_ends = (GLM_snippets[j][0,0] >= MMIA_snippets[j][-1,0])
+            MMIA_starts_after_GLM_ends = (MMIA_snippets[j][0,0] >= GLM_snippets[j][-1,0])
+            
+            no_overlap_conditions = [GLM_starts_after_MMIA_ends, MMIA_starts_after_GLM_ends]
+            
+        if type(GLM_snippets[j]) == np.ndarray and type(MMIA_snippets[j]) == np.ndarray and any(no_overlap_conditions) == False:
+            
             current_GLM = GLM_norm[j]
             current_MMIA = MMIA_norm[j]
             
@@ -1264,15 +1273,26 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
             # Assuring cross-correlation is inside accuracy in time by cropping signals if necessary
             
             delay = 100000  # Very high delay value in order to enter the while loop
+            prev_min_delay = delay
             delay_crop = 5000
             max_viable_delay = 8000
             counter = 0
+            max_it = 1000
+            
             it_current_GLM = current_GLM
             it_current_MMIA = current_MMIA
-            
-            while abs(delay) >= max_viable_delay and counter < 1000 and len(it_current_GLM) > delay_crop:
+
+            while abs(delay) >= max_viable_delay and counter < max_it and len(it_current_GLM) > delay_crop:
                 
                 delay = int(TFG.signal_delay(it_current_GLM, it_current_MMIA, show_plots, int(matches[current_day]), j))
+                
+                if counter == 0 or abs(delay) < abs(prev_min_delay):
+                    prev_min_delay = delay
+                
+                if counter != 0 and delay >= prev_min_delay:
+                    delay = prev_min_delay
+                    counter = max_it # Cut while loop
+                
                 counter = counter+1
                 
                 if abs(delay) >= max_viable_delay and counter == 1:
@@ -1301,8 +1321,6 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
                     
                     new_GLM_length = len(it_current_GLM) - delay_crop
                     new_current_GLM = np.zeros((new_GLM_length,2))
-                    #new_current_GLM[:,:] = it_current_GLM[delay_crop:new_GLM_length+delay_crop, :]
-                    #del it_current_GLM 
                     
                     if delay < 0:      # MMIA delays too far from time accuracy
                         new_current_GLM[:,:] = it_current_GLM[0:new_GLM_length, :]
@@ -1367,19 +1385,20 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
             MMIA_xcorr_norm[j] = MMIA_xc
             del MMIA_xc
 
-            print('Date %d trigger %d / %d cross-correlated and aligned!' % (int(matches[current_day]), j, len(GLM_xcorr_norm)))
+            print('Date %d event %d / %d cross-correlated and aligned!' % (int(matches[current_day]), j, len(GLM_xcorr_norm)))
             
         elif type(GLM_snippets[j]) == np.ndarray and type(MMIA_snippets[j]) != np.ndarray:
-            print('Date %d trigger %d / %d was pre-avoided for lack of MMIA data' % (int(matches[current_day]), j, len(GLM_xcorr_norm)))
+            print('Date %d event %d / %d was pre-avoided for lack of MMIA data' % (int(matches[current_day]), j, len(GLM_xcorr_norm)))
             
         elif type(GLM_snippets[j]) != np.ndarray and type(MMIA_snippets[j]) == np.ndarray:
-            print('Date %d trigger %d / %d was pre-avoided for lack of GLM data' % (int(matches[current_day]), j, len(GLM_xcorr_norm)))
+            print('Date %d event %d / %d was pre-avoided for lack of GLM data' % (int(matches[current_day]), j, len(GLM_xcorr_norm)))
             
-        else:
-            print('Date %d trigger %d / %d was pre-avoided for lack of GLM and MMIA data' % (int(matches[current_day]), j, len(GLM_xcorr_norm)))
-            
+        elif type(GLM_snippets[j]) != np.ndarray and type(MMIA_snippets[j]) != np.ndarray:
+            print('Date %d event %d / %d was pre-avoided for lack of GLM and MMIA data' % (int(matches[current_day]), j, len(GLM_xcorr_norm)))
+        elif any(no_overlap_conditions):
+            print('GLM and MMIA signals for day %s event %d / %d do not overlap at all' % (matches[current_day], j, len(GLM_xcorr_norm)))
     print(' ')
-    print('All triggers checked!')
+    print('All events checked!')
     print(' ')
     return [GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, delays]
 
