@@ -8,9 +8,8 @@ import os
 
 '''
 # TODO: Validar TCE
-# TODO: Iterar cross-correlation
 # TODO: Comprobar Pixel size y Factor división angle_margin para USA
-# TODO: +0.1s (10000 samples ok?) en progresion lineal separar eventos
+
 '''
 
 
