@@ -11,7 +11,7 @@ import pickle
 import matplotlib.pyplot as plt
 import math
 
-def split_MMIA_events(event, split_window):
+def split_MMIA_events_v0(event, split_window):
     
     derivative = np.diff(event[:,1])/np.diff(event[:,0]) # dy/dx
     non_linear_positions = np.zeros((len(derivative),2))
@@ -47,6 +47,31 @@ def split_MMIA_events(event, split_window):
 
     return event_borders
 
+def split_MMIA_events(mmia_raw, event_limits, split_window):
+    
+    for i in range(len(mmia_raw)):
+        
+        event_times = mmia_raw[i][:,0]
+        
+        split_positions = []
+        
+        for j in range(1, len(event_times)):
+            if (event_times[j] - event_times[j-1]) >= split_window:
+                split_positions.append(j)
+        
+        if len(split_positions) != 0:   # If there were time jumps
+            
+            for j in range(len(split_positions)):
+                if j == 0:
+                    mmia_raw[i] = mmia_raw[i][0:split_positions[0]-2,:]
+                elif j == (len(split_positions)-1):
+                    mmia_raw.append(mmia_raw[i][split_positions[j]-2:-1,:])
+                    event_limits.append(event_limits[i])
+                else:
+                    mmia_raw.append(mmia_raw[i][split_positions[j-1]+2:split_positions[j]-2,:])
+                    event_limits.append(event_limits[i])
+
+    return [mmia_raw, event_limits]
 
 
 
@@ -62,13 +87,13 @@ f.close()
 
 event_borders = split_MMIA_events(MMIA_xcorr_norm[1], 3000)
 
-plt.figure()
-plt.plot(MMIA_xcorr_norm[1][:,0], MMIA_xcorr_norm[1][:,1])
+#plt.figure()
+#plt.plot(MMIA_xcorr_norm[1][:,0], MMIA_xcorr_norm[1][:,1])
 #plt.scatter(non_linear_positions[:,0], non_linear_positions[:,1], color='r')
-plt.show()
+#plt.show()
 
 if len(event_borders) != 1:
-    print(event_borders)
+    
     events_num = int(len(event_borders)/2)
 
     new_event_list = [None] * events_num
@@ -79,8 +104,11 @@ if len(event_borders) != 1:
         my_event = MMIA_xcorr_norm[1][my_start:my_end,:]
         new_event_list[i] = my_event
     plt.figure()
-    plt.plot(MMIA_xcorr_norm[1][:,0], MMIA_xcorr_norm[1][:,1])
+    plt.plot(MMIA_xcorr_norm[1][:,0], MMIA_xcorr_norm[1][:,1], linewidth=0.5)
+    plt.grid('on')
+    plt.xlabel('Time [s]')
+    plt.ylabel('Normalized Energy')
     for i in range(events_num):
         #plt.figure()
-        plt.plot(new_event_list[i][:,0], new_event_list[i][:,1])
-        #plt.show()
+        plt.plot(new_event_list[i][:,0], new_event_list[i][:,1], linewidth=0.5)
+    plt.show()

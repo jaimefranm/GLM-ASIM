@@ -135,7 +135,7 @@ def create_MMIA_event_directories(matches, trigger_filenames, path_to_mmia_files
 
     print('MMIA classification done!\n')
 
-def extract_event_info(path_to_mmia_dirs, mmia_mats_files_path, matlab_path):
+def extract_MMIA_event_info(path_to_mmia_dirs, mmia_mats_files_path, matlab_path):
 
     # Extracting data for every trigger
 
@@ -1139,11 +1139,20 @@ def condition_MMIA_data(MMIA_data, matches, show_plots, mmia_threshold, current_
             current_data=np.zeros((len(MMIA_data[j]),2))
             current_data[:,0] = MMIA_data[j][:,0]
             current_data[:,1] = MMIA_data[j][:,3] # 4th column as 777.4 nm
-            
-            
+
+            show_plots=1
             if show_plots == 1:
                 plt.figure(figsize=(9, 3))
+                figname = matches[current_day] + '_' + str(j) + '.pdf'
                 plt.plot(current_data[:,0],current_data[:,1],linewidth=0.5, color='r')
+                plt.savefig(figname)
+                # Clear the current axes
+                plt.cla() 
+                # Clear the current figure
+                plt.clf() 
+                # Closes all the figure windows
+                plt.close('all')
+            show_plots=0
             #-----------------------------------------------------------------------------------------------------------------------
             n = 15  # the larger n is, the smoother curve will be
             b = [1.0 / n] * n
@@ -1154,8 +1163,9 @@ def condition_MMIA_data(MMIA_data, matches, show_plots, mmia_threshold, current_
                 MMIA_filtered[j] = None
                 print('MMIA data for day %d snippet %d was just noise!' % (int(matches[current_day]), j))
                 print(' ')
+                
             else:
-            
+
                 # Assuring continuity in MMIA_MA timesteps
                 MMIA_filtered[j] = TFG.fit_vector_in_MMIA_timesteps(current_data, int(matches[current_day]), j, 1, 1)
                 #MMIA_filtered[i][j] = current_data
@@ -1933,31 +1943,24 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
                 else:
                     no_delays_list.append(delays[i][j])
 
-    
-    all_delays = np.zeros((len(delay_list),1))
-    all_delays[:,0] = delay_list[:]
+    all_delays = np.array(delay_list)
     if len(all_delays) != 0:
         avg_all = np.average(all_delays)
         std_all = np.std(all_delays)
     
-    
-    MMIA_delays = np.zeros((len(MMIA_delays_list),1))
-    MMIA_delays[:,0] = MMIA_delays_list[:]
+    MMIA_delays = np.array(MMIA_delays_list)
     if len(MMIA_delays) != 0:
         avg_negative = np.average(MMIA_delays)
         std_negative = np.std(MMIA_delays)
         
     # (GLM delays is really MMIA sends early)
     
-    GLM_delays = np.zeros((len(GLM_delays_list),1))
-    GLM_delays[:,0] = GLM_delays_list[:]
+    GLM_delays = np.array(GLM_delays_list)
     if len(GLM_delays) != 0:
         avg_positive = np.average(GLM_delays)
         std_positive = np.std(GLM_delays)
-    
-
-    no_delays = np.zeros((len(no_delays_list),1))
-    no_delays[:,0] = no_delays_list[:]
+        
+    no_delays = np.array(no_delays_list)
     
     valid_triggers = len(MMIA_delays) + len(GLM_delays) + len(no_delays)
     
@@ -2060,7 +2063,7 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         plt.close('all')
         
         # Averaging in delays
-        if ('avg_positive' in locals()) and ('avg_positive' in locals()):
+        if ('avg_positive' in locals()) and ('avg_negative' in locals()):
             fig = plt.figure(dpi=800)
             ax = fig.add_axes([0,0,1,1])
             langs = ['Avg. Delay', 'Avg. MMIA Delay', 'Avg. MMIA Anticipation']
@@ -2146,7 +2149,7 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         bins_num = math.ceil(bins_num)              # Approximation
         if bins_num%2 != 0:
             bins_num = bins_num - 1
-        
+        bins_num = 50
         plt.figure()
         plt.hist(delays_s_vec, bins = bins_num, rwidth=0.85)
         plt.title('All Delay Histogram')
@@ -2376,3 +2379,47 @@ def top_cloud_energy(GLM_xcorr, MMIA_xcorr, current_day, show_plots, tce_figures
             print('Signals for day %s event %d could not be correlated, so no conversion is possible' % (current_day, i))
     
     return [glm_tce, mmia_tce]
+
+def split_MMIA_events(mmia_raw, event_limits, event_filenames_on_day, split_window):
+    
+    print('Looking for splittable events...')
+    for i in range(len(mmia_raw)):
+        
+        event_times = mmia_raw[i][:,0]
+        
+        split_positions = []
+        
+        for j in range(1, len(event_times)):
+            if (event_times[j] - event_times[j-1]) >= split_window:
+                split_positions.append(j)
+        
+        if len(split_positions) != 0:   # If there were time jumps
+            
+            if len(split_positions) == 1:
+                
+                current_mmia_raw_copy = mmia_raw[i]
+                mmia_raw[i] = mmia_raw[i][0:split_positions[0]-2,:]
+                mmia_raw.append(current_mmia_raw_copy[split_positions[0]+2:-1,:])
+                event_limits.append(event_limits[i])
+                event_filenames_on_day.append(event_filenames_on_day[i])
+            
+            else:
+                
+                current_mmia_raw_copy = mmia_raw[i]
+                split_positions.append(-1)
+        
+                for j in range(len(split_positions)):
+
+                    if j == 0:
+                        mmia_raw[i] = mmia_raw[i][0:split_positions[0]-2,:]
+                    elif j == (len(split_positions)-1):
+                        mmia_raw.append(current_mmia_raw_copy[split_positions[j-1]+2:-1,:])
+                        event_limits.append(event_limits[i])
+                        event_filenames_on_day.append(event_filenames_on_day[i])
+                    else:
+                        mmia_raw.append(current_mmia_raw_copy[split_positions[j-1]+2:split_positions[j]-2,:])
+                        event_limits.append(event_limits[i])
+                        event_filenames_on_day.append(event_filenames_on_day[i])
+        
+    print('Done!\n')
+    return [mmia_raw, event_limits, event_filenames_on_day]

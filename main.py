@@ -24,22 +24,22 @@ import os
 ### GENERAL ###
 
 # Boolean variable for setting everything for the first execution
-first_execution = False
+first_execution = True
 
 # Boolean variable for generating plots
 show_plots = False
 
 # Boolean variable for pre-cross-correlated data
-pre_xc = True
+pre_xc = False
 
 # Boolean variable for pre-converted to top cloud energy
-pre_tce = True
+pre_tce = False
 
 # Boolean variable for pre-detected peaks
-pre_detected_peaks = True
+pre_detected_peaks = False
 
 # Boolean variable for pre-studied peaks
-pre_studied = True
+pre_studied = False
 
 # Boolean variable for just outputting results
 just_results = False
@@ -49,12 +49,12 @@ pre_event_directories = True
 
 # Path to Hard Disk (with all MMIA files and where to store all files)
 #ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
-ssd_path = '/Users/jaimemorandominguez/Desktop/6071_results'
+ssd_path = '/Users/jaimemorandominguez/Desktop/test_plit_disk'
 #ssd_path = '/media/lrg'
 
 # Path where MMIA's .cdf files are located
 #MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
-MMIA_files_path = '/Users/jaimemorandominguez/Desktop/6071'
+MMIA_files_path = '/Users/jaimemorandominguez/Desktop/test_plit'
 #MMIA_files_path = '/media/lrg/mmia_20'
 
 # Path to MATLAB executable
@@ -72,13 +72,13 @@ GLM_radius = 400 # [km]
 angle_margin = GLM_radius / 111.11 # or a given value in degrees
 
 # Boolean variable for downloading GLM .nc files from Google Cloud Storage
-pre_downloaded_GLM = True
+pre_downloaded_GLM = False
 
 # Boolean variable for pre-extracted files
-pre_extracted_GLM = True
+pre_extracted_GLM = False
 
 # Boolean variable for integrating GLM signals if not pre-done
-pre_integrated_GLM = True
+pre_integrated_GLM = False
 
 
 ### MMIA ###
@@ -91,6 +91,9 @@ pre_conditioned_MMIA = False
 
 # Maximum length in seconds of each event
 event_length = 2 # [s]
+
+# Minimum time to consider as two sepparate events
+split_window = 2000*0.00001
 
 # Threshold for MMIA signal
 mmia_threshold = 1.75   # [micro W / m^2]
@@ -182,7 +185,7 @@ if just_results == False:
     # MMIA data extraction
     if pre_extracted_MMIA == False:
         os.system('mkdir ' + mmia_mats_files_path)
-        TFG.extract_event_info(path_to_mmia_dirs, mmia_mats_files_path, matlab_path)
+        TFG.extract_MMIA_event_info(path_to_mmia_dirs, mmia_mats_files_path, matlab_path)
 
 
     #########################################################################################################
@@ -204,8 +207,11 @@ if just_results == False:
         [mmia_raw, event_limits] = TFG.upload_MMIA_mats(ssd_path, event_filenames, matches, day)
         print('Done!\n')
 
-
         if pre_conditioned_MMIA == False:
+            
+            # Splitting those signals where more than one event was found
+            [mmia_raw, event_limits, event_filenames[day]] = TFG.split_MMIA_events(mmia_raw, event_limits, event_filenames[day], split_window)
+            
             # Conditioning MMIA data for further analysis
             MMIA_filtered = TFG.condition_MMIA_data(mmia_raw, matches, show_plots, mmia_threshold, day)
             
@@ -449,6 +455,25 @@ if just_results == False:
             del MMIA_peaks
             del matching_peaks
         
+        else:
+            print('GLM and MMIA peaks were pre-found for day %s. Uploading from %s/%s.pckl...\n' % (matches[day], peaks_bin, matches[day]))
+            
+            # Uploading GLM peaks
+            f = open(peaks_bin + '/' + matches[day] + '_glm.pckl', 'rb')
+            GLM_peaks = pickle.load(f)
+            f.close()
+            
+            # Uploading MMIA peaks
+            f = open(peaks_bin + '/' + matches[day] + '_mmia.pckl', 'rb')
+            MMIA_peaks = pickle.load(f)
+            f.close()
+            
+            # Uploading GLM peaks
+            f = open(peaks_bin + '/' + matches[day] + '_matching.pckl', 'rb')
+            matching_peaks = pickle.load(f)
+            f.close()
+            
+            
         del GLM_xcorr
         del GLM_xcorr_norm
         del MMIA_xcorr
