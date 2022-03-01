@@ -9,7 +9,6 @@ import os
 '''
 # TODO: Validar TCE
 # TODO: Comprobar Pixel size y Factor división angle_margin para USA
-
 '''
 
 
@@ -23,7 +22,7 @@ import os
 ### GENERAL ###
 
 # Boolean variable for setting everything for the first execution
-first_execution = True
+first_execution = False
 
 # Boolean variable for generating plots
 show_plots = False
@@ -47,14 +46,14 @@ just_results = False
 pre_event_directories = True
 
 # Path to Hard Disk (with all MMIA files and where to store all files)
-#ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
-ssd_path = '/Users/jaimemorandominguez/Desktop/test_plit_disk'
-#ssd_path = '/media/lrg'
+ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
+#ssd_path = '/Users/jaimemorandominguez/Desktop/test_plit_disk'
+#ssd_path = '/media/lrg/colombia_2020'
 
 # Path where MMIA's .cdf files are located
-#MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
-MMIA_files_path = '/Users/jaimemorandominguez/Desktop/test_plit'
-#MMIA_files_path = '/media/lrg/mmia_20'
+MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
+#MMIA_files_path = '/Users/jaimemorandominguez/Desktop/test_plit'
+#MMIA_files_path = '/media/lrg/colombia_2020/mmia_20'
 
 # Path to MATLAB executable
 matlab_path = '/Applications/MATLAB_R2021b.app/bin/matlab'
@@ -192,7 +191,7 @@ if just_results == False:
     #########################################################################################################
 
 
-    for day in range(len(matches)):
+    for day in range(96,len(matches)):
         print(' ')
         print('******************************')
         print('DAY %s, %d of %d' % (matches[day], day+1, len(matches)))

@@ -1140,7 +1140,6 @@ def condition_MMIA_data(MMIA_data, matches, show_plots, mmia_threshold, current_
             current_data[:,0] = MMIA_data[j][:,0]
             current_data[:,1] = MMIA_data[j][:,3] # 4th column as 777.4 nm
 
-            show_plots=1
             if show_plots == 1:
                 plt.figure(figsize=(9, 3))
                 figname = matches[current_day] + '_' + str(j) + '.pdf'
@@ -1152,7 +1151,7 @@ def condition_MMIA_data(MMIA_data, matches, show_plots, mmia_threshold, current_
                 plt.clf() 
                 # Closes all the figure windows
                 plt.close('all')
-            show_plots=0
+            
             #-----------------------------------------------------------------------------------------------------------------------
             n = 15  # the larger n is, the smoother curve will be
             b = [1.0 / n] * n
@@ -2376,7 +2375,7 @@ def top_cloud_energy(GLM_xcorr, MMIA_xcorr, current_day, show_plots, tce_figures
                 plt.close('all')
             
         else:
-            print('Signals for day %s event %d could not be correlated, so no conversion is possible' % (current_day, i))
+            print('Signals for day %s event %d could not be correlated, so no conversion is possible\n' % (current_day, i))
     
     return [glm_tce, mmia_tce]
 
@@ -2385,41 +2384,43 @@ def split_MMIA_events(mmia_raw, event_limits, event_filenames_on_day, split_wind
     print('Looking for splittable events...')
     for i in range(len(mmia_raw)):
         
-        event_times = mmia_raw[i][:,0]
+        if type(mmia_raw[i]) == np.ndarray:
         
-        split_positions = []
-        
-        for j in range(1, len(event_times)):
-            if (event_times[j] - event_times[j-1]) >= split_window:
-                split_positions.append(j)
-        
-        if len(split_positions) != 0:   # If there were time jumps
+            event_times = mmia_raw[i][:,0]
             
-            if len(split_positions) == 1:
-                
-                current_mmia_raw_copy = mmia_raw[i]
-                mmia_raw[i] = mmia_raw[i][0:split_positions[0]-2,:]
-                mmia_raw.append(current_mmia_raw_copy[split_positions[0]+2:-1,:])
-                event_limits.append(event_limits[i])
-                event_filenames_on_day.append(event_filenames_on_day[i])
+            split_positions = []
             
-            else:
+            for j in range(1, len(event_times)):
+                if (event_times[j] - event_times[j-1]) >= split_window:
+                    split_positions.append(j)
+            
+            if len(split_positions) != 0:   # If there were time jumps
                 
-                current_mmia_raw_copy = mmia_raw[i]
-                split_positions.append(-1)
-        
-                for j in range(len(split_positions)):
+                if len(split_positions) == 1:
+                    
+                    current_mmia_raw_copy = mmia_raw[i]
+                    mmia_raw[i] = mmia_raw[i][0:split_positions[0]-2,:]
+                    mmia_raw.append(current_mmia_raw_copy[split_positions[0]+2:-1,:])
+                    event_limits.append(event_limits[i])
+                    event_filenames_on_day.append(event_filenames_on_day[i])
+                
+                else:
+                    
+                    current_mmia_raw_copy = mmia_raw[i]
+                    split_positions.append(-1)
+            
+                    for j in range(len(split_positions)):
 
-                    if j == 0:
-                        mmia_raw[i] = mmia_raw[i][0:split_positions[0]-2,:]
-                    elif j == (len(split_positions)-1):
-                        mmia_raw.append(current_mmia_raw_copy[split_positions[j-1]+2:-1,:])
-                        event_limits.append(event_limits[i])
-                        event_filenames_on_day.append(event_filenames_on_day[i])
-                    else:
-                        mmia_raw.append(current_mmia_raw_copy[split_positions[j-1]+2:split_positions[j]-2,:])
-                        event_limits.append(event_limits[i])
-                        event_filenames_on_day.append(event_filenames_on_day[i])
+                        if j == 0:
+                            mmia_raw[i] = mmia_raw[i][0:split_positions[0]-2,:]
+                        elif j == (len(split_positions)-1):
+                            mmia_raw.append(current_mmia_raw_copy[split_positions[j-1]+2:-1,:])
+                            event_limits.append(event_limits[i])
+                            event_filenames_on_day.append(event_filenames_on_day[i])
+                        else:
+                            mmia_raw.append(current_mmia_raw_copy[split_positions[j-1]+2:split_positions[j]-2,:])
+                            event_limits.append(event_limits[i])
+                            event_filenames_on_day.append(event_filenames_on_day[i])
         
     print('Done!\n')
     return [mmia_raw, event_limits, event_filenames_on_day]
