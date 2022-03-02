@@ -13,16 +13,16 @@ import os
 
 
 '''
-###################################################
-##               USER INPUT DATA                 ##
-###################################################
+###########################################################
+##                     USER INPUT DATA                   ##
+###########################################################
 '''
 
 
 ### GENERAL ###
 
 # Boolean variable for setting everything for the first execution
-first_execution = False
+first_execution = True
 
 # Boolean variable for generating plots
 show_plots = False
@@ -46,13 +46,13 @@ just_results = False
 pre_event_directories = True
 
 # Path to Hard Disk (with all MMIA files and where to store all files)
-ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
-#ssd_path = '/Users/jaimemorandominguez/Desktop/test_plit_disk'
+#ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
+ssd_path = '/Users/jaimemorandominguez/Desktop/special_tests/test_plit_disk'
 #ssd_path = '/media/lrg/colombia_2020'
 
 # Path where MMIA's .cdf files are located
-MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
-#MMIA_files_path = '/Users/jaimemorandominguez/Desktop/test_plit'
+#MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
+MMIA_files_path = '/Users/jaimemorandominguez/Desktop/special_tests/test_plit'
 #MMIA_files_path = '/media/lrg/colombia_2020/mmia_20'
 
 # Path to MATLAB executable
@@ -64,6 +64,9 @@ matlab_path = '/Applications/MATLAB_R2021b.app/bin/matlab'
 
 # Time in seconds to analyze GLM before and after MMIA's time snippet
 cropping_margin = 0.5
+
+# GLM pixel size in Colombia
+glm_pix_size = 8*8  # [km^2]
 
 # Plus of angle in latitude and longitude to snip GLM data
 GLM_radius = 400 # [km]
@@ -98,9 +101,9 @@ mmia_threshold = 1.75   # [micro W / m^2]
 
 
 '''
-###################################################
-##           END OF USER INPUT DATA              ##
-###################################################
+###########################################################
+##                END OF USER INPUT DATA                 ##
+###########################################################
 '''
 
 
@@ -191,7 +194,7 @@ if just_results == False:
     #########################################################################################################
 
 
-    for day in range(96,len(matches)):
+    for day in range(len(matches)):
         print(' ')
         print('******************************')
         print('DAY %s, %d of %d' % (matches[day], day+1, len(matches)))
@@ -383,7 +386,7 @@ if just_results == False:
             # Convert GLM and MMIA data to Top Cloud Energy data
             show_plots = True
             print('Converting GLM and MMIA instrumental data into Top Cloud Energy for day %s\n' % matches[day])
-            [glm_tce, mmia_tce] = TFG.top_cloud_energy(GLM_xcorr, MMIA_xcorr, matches[day], show_plots, tce_figures_path)
+            [glm_tce, mmia_tce] = TFG.top_cloud_energy(GLM_xcorr, MMIA_xcorr, matches[day], show_plots, tce_figures_path, glm_pix_size)
             print('Done!\n')
             show_plots = False
             
