@@ -1,8 +1,8 @@
 '''
 Library of necessary functions to run 'main.py' to download GLM data, condition
-MMIA and GLM data and compare it.
+MMIA and GLM data and compare it
 
-Please note every 'trigger' notation is an 'event'.
+Please note every 'trigger' notation is an 'event'
 
 Morán Domínguez, Jaime Francisco
 jaime.francisco.moran@upc.edu
@@ -789,7 +789,7 @@ def unify_GLM_data(output_path, MMIA_filtered, matches, current_day):
 
     return GLM_raw_data
 
-def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
+def condition_GLM_data_v2(GLM_total_raw_data, matches, show_plots, current_day):
     '''
     This function takes all the extracted data from GLM .txt files, integrates
     it and fits it in MMIA sample rate (0.002s of GLM to 0.00001s of MMIA)
@@ -2312,7 +2312,7 @@ def simpson_integral(signal, t1, t_end):
             else:
                 
                 int_signal[0].append(t_bin[0])  # Van der velde et al 2020
-                int_signal[1].append(np.trapz(signal[f_in_signal,1])*1e-5) # 777 nm uJ m-2 in a 10 us exposure integrated with trapezium rule over bin of 2 ms
+                int_signal[1].append(np.trapz(signal[f_in_signal,1],x=signal[f_in_signal,0])*1e-5) # 777 nm uJ m-2 in a 10 us exposure integrated with trapezium rule over bin of 2 ms
             
             cnt = cnt+1
 
@@ -2424,3 +2424,174 @@ def split_MMIA_events(mmia_raw, event_limits, event_filenames_on_day, split_wind
         
     print('Done!\n')
     return [mmia_raw, event_limits, event_filenames_on_day]
+
+def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
+    '''
+    This function takes all the extracted data from GLM .txt files, integrates
+    it and fits it in MMIA sample rate (0.002s of GLM to 0.00001s of MMIA)
+
+    Parameters
+    ----------
+    GLM_total_raw_data : list
+        List of daily GLM tables of data.
+    matches : list
+        List of dates with existing GLM and MMIA files
+    show_plots : bool
+        Boolean variable for plotting. Not ploting makes the program faster.
+
+    Returns
+    -------
+    GLM_data : list
+        List of daily lists of snippets with integrated GLM radiance in MMIA
+        sample rate.
+    '''
+
+    # Creating a new set of data
+    GLM_data = [None] * len(GLM_total_raw_data)
+
+    # Integrating and extending GLM vectors by date
+    for j in range(len(GLM_total_raw_data)):   # For every event with GLM data
+            
+        if type(GLM_total_raw_data[j]) == np.ndarray and len(GLM_total_raw_data[j]) <= 1:
+            print('GLM detection for day %d snippet %d is void!' % (int(matches[current_day]), j))
+            print(' ')
+            GLM_total_raw_data[j] = None
+
+        elif type(GLM_total_raw_data[j]) == np.ndarray and len(GLM_total_raw_data[j]) != 0:
+            just_one_timestep = 1
+            check_pos = 1
+            while just_one_timestep == 1:
+                # If last position and same as timestep before in the .txt
+                if check_pos == (len(GLM_total_raw_data[j])-1) and GLM_total_raw_data[j][check_pos-1,0] == GLM_total_raw_data[j][check_pos,0]:
+                    just_one_timestep = 2
+                else:
+                    # Different timestep in the .txt as in line before
+                    if GLM_total_raw_data[j][check_pos-1,0] != GLM_total_raw_data[j][check_pos,0]:
+                        just_one_timestep = 0
+                    else: # Same timestep in the .txt as in line before
+                        check_pos = check_pos + 1
+
+        if type(GLM_total_raw_data[j]) == np.ndarray and just_one_timestep == 2:
+            print('GLM detection for day %d snippet %d contains only 1 timestep and will not be compared' % (int(matches[current_day]), j))
+            print(' ')
+            GLM_total_raw_data[j] = None
+
+        if type(GLM_total_raw_data[j]) == np.ndarray:
+            
+            # Showing non-inflated time vector
+            if show_plots == 1:
+                plt.figure()
+                plt.plot(GLM_total_raw_data[j][:,0])
+                plt.xlabel('Samples')
+                plt.ylabel('Time [s]')
+                plt.title('Original GLM Time VS Samples for date %d snippet %d' % (int(matches[current_day]), j))
+                plt.grid('on')
+                plt.show()
+                # Clear the current axes
+                plt.cla()
+                # Clear the current figure
+                plt.clf() 
+                # Closes all the figure windows
+                plt.close('all')
+
+            # Integration
+            
+            current_GLM_event = GLM_total_raw_data[j]
+            
+            GLM_int_data = TFG.integrate_signal(current_GLM_event, matches, current_day, j, len(GLM_total_raw_data), True)
+            
+            GLM_data[j] = fit_vector_in_MMIA_timesteps(GLM_int_data, int(matches[current_day]), j, show_plots, 0)
+            
+            
+            # Check for too short snippet vectors
+            if len(GLM_data[j])<=100:
+                print('Data for day %s snippet %d is too poor, only %d samples. This snippet will be omitted.' % (matches[current_day], j, len(GLM_data[j])))
+                GLM_data[j] = None
+
+            if show_plots == 1 and type(GLM_data[j]) == np.ndarray:
+                # Plotting lineality in GLM time vector with GLM sampling rate
+                plt.figure()
+                plt.plot(GLM_int_data[:,0])
+                plt.title('GLM Time vector of day %d snippet %d with 0.002s period' % (int(matches[current_day]), j))
+                plt.xlabel('Samples')
+                plt.ylabel('Time [s]')
+                plt.grid('on')
+                plt.show()
+                # Clear the current axes
+                plt.cla() 
+                # Clear the current figure
+                plt.clf() 
+                # Closes all the figure windows
+                plt.close('all')
+
+                # Integrated GLM radiance vs time graph representation
+                plt.figure()
+                plt.plot(GLM_int_data[:,0],GLM_int_data[:,1], linewidth=0.5, color='black')
+                plt.grid('on')
+                plt.title('GLM signal of day %d snippet %d with GLM sample rate (0.002s)' % (int(matches[current_day]), j))
+                plt.xlabel('Time [s]')
+                plt.ylabel('Radiance [J]')
+                plt.show()
+                # Clear the current axes
+                plt.cla() 
+                # Clear the current figure
+                plt.clf() 
+                # Closes all the figure windows
+                plt.close('all')
+                
+                
+            del GLM_int_data
+                
+    print('Integration of GLM vectors done!')
+    print(' ')
+
+    return GLM_data
+
+def integrate_signal(event, matches, current_day, j, events_num, isGLM):
+    
+    if isGLM == True:
+        print('Integrating GLM data, date %d (%d / %d), event %d / %d' % (int(matches[current_day]), current_day+1, len(matches), j, events_num))
+    else:
+        print('Integrating MMIA data, date %d (%d / %d), event %d / %d' % (int(matches[current_day]), current_day+1, len(matches), j, events_num))
+        
+    GLM_length = math.ceil((event[-1,0] - event[0,0]) / 0.002)
+
+    # Current table of data (current day)
+
+    GLM_int_data = np.zeros((GLM_length, 2))
+    
+    pos_0 = 0
+    for k in range(GLM_length): # For every sample accounting zeros at GLM rate
+        # Fill time instance
+        GLM_int_data[k,0] = round(event[0,0] + k*0.002, 3)
+        
+        # Create windows of 0.002s and integrate their content
+        t_min = GLM_int_data[k,0]
+        t_max = t_min + 0.002
+        inside = True
+        count = 0
+        
+        while inside == True:
+            raw_pos = pos_0 + count
+
+            # Check if the next GLM_total_raw_data sample will be added
+
+            raw_end = (raw_pos == (len(event)-1))
+
+            if raw_end == False:
+                inside = (event[raw_pos+1,0]) < t_max
+                if inside == True:
+                    count = count + 1
+                else:   # Next sample is NOT inside current window
+                    count = count + 1
+                    pos_0 = raw_pos
+                    window_positions = np.linspace(pos_0,pos_0+count,count+1,dtype=int)
+                    GLM_int_data[k,1] = np.trapz(event[window_positions,1], x=event[window_positions,0])
+            else:
+                inside = False
+                window_positions = np.linspace(pos_0,len(event)-1,len(event)-pos_0,dtype=int)
+                GLM_int_data[k,1] = np.trapz(event[window_positions,1], x=event[window_positions,0])
+                
+    print('Done!')
+    return GLM_int_data
+
