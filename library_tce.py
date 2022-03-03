@@ -15,6 +15,7 @@ import os
 import re
 import netCDF4 as nc
 from netCDF4 import Dataset
+import numpy.matlib
 import scipy.io as sio
 import datetime
 import pandas as pd
@@ -858,57 +859,21 @@ def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
                 plt.close('all')
 
             # Integration
-
-            print('Integrating GLM data, date %d (%d / %d), snippet %d / %d' % (int(matches[current_day]), current_day+1, len(matches), j, len(GLM_total_raw_data)))
-
-            GLM_length = math.ceil((GLM_total_raw_data[j][-1,0] - GLM_total_raw_data[j][0,0]) / 0.002)
-
-            # Current table of data (current day)
-
-            GLM_int_data = np.zeros((GLM_length, 2))
-
-            pos_0 = 0
-            for k in range(GLM_length): # For every sample accounting zeroes at GLM rate
-                GLM_int_data[k,0] = round(GLM_total_raw_data[j][0,0] + k*0.002, 3)
-                t_min = GLM_int_data[k,0]
-                t_max = t_min + 0.002
-                inside = True
-                count = 0
-
-                while inside == True:
-                    raw_pos = pos_0 + count
-
-                    if GLM_total_raw_data[j][raw_pos,0] >= t_min and GLM_total_raw_data[j][raw_pos,0] < t_max:
-                        GLM_int_data[k,1] = GLM_int_data[k,1] + GLM_total_raw_data[j][raw_pos,6]
-
-                    # Check if the next GLM_total_raw_data sample will be added
-
-                    raw_end = (raw_pos == (len(GLM_total_raw_data[j])-1))
-
-                    if raw_end == False:
-                        inside = (GLM_total_raw_data[j][raw_pos+1,0]) < t_max
-                        if inside == True:
-                            count = count + 1
-                        else:
-                            count = count + 1
-                            pos_0 = raw_pos
-                    else:
-                        inside = False
-            print('Done!')
-            print(len(GLM_int_data))
-            GLM_data[j] = fit_vector_in_MMIA_timesteps(GLM_int_data, int(matches[current_day]), j, show_plots, 0)
+            # GLM_int_data = integrate_signal_002(GLM_total_raw_data[j], True)
+            # GLM_data[j] = fit_vector_in_MMIA_timesteps(GLM_int_data, int(matches[current_day]), j, show_plots, 0)
+            GLM_data[j] = GLM_total_raw_data[j]
             
             
             # Check for too short snippet vectors
-            if len(GLM_data[j])<=100:
+            if len(GLM_data[j])<=5:
                 print('Data for day %s snippet %d is too poor, only %d samples. This snippet will be omitted.' % (matches[current_day], j, len(GLM_data[j])))
                 GLM_data[j] = None
 
             if show_plots == 1 and type(GLM_data[j]) == np.ndarray:
                 # Plotting lineality in GLM time vector with GLM sampling rate
                 plt.figure()
-                plt.plot(GLM_int_data[:,0])
-                plt.title('GLM Time vector of day %d snippet %d with 0.002s period' % (int(matches[current_day]), j))
+                plt.plot(GLM_data[j][:,0])
+                plt.title('GLM Time vector of day %d event %d with 0.002s period' % (int(matches[current_day]), j))
                 plt.xlabel('Samples')
                 plt.ylabel('Time [s]')
                 plt.grid('on')
@@ -922,9 +887,9 @@ def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
 
                 # Integrated GLM radiance vs time graph representation
                 plt.figure()
-                plt.plot(GLM_int_data[:,0],GLM_int_data[:,1], linewidth=0.5, color='black')
+                plt.plot(GLM_data[j][:,0],GLM_data[j][:,1], linewidth=0.5, color='black')
                 plt.grid('on')
-                plt.title('GLM signal of day %d snippet %d with GLM sample rate (0.002s)' % (int(matches[current_day]), j))
+                plt.title('GLM signal of day %d event %d with GLM sample rate (0.002s)' % (int(matches[current_day]), j))
                 plt.xlabel('Time [s]')
                 plt.ylabel('Radiance [J]')
                 plt.show()
@@ -935,10 +900,7 @@ def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
                 # Closes all the figure windows
                 plt.close('all')
                 
-                
-            del GLM_int_data
-                
-    print('Integration of GLM vectors done!')
+    print('Conditioning of GLM vectors done!')
     print(' ')
 
     return GLM_data
@@ -1165,10 +1127,7 @@ def condition_MMIA_data(MMIA_data, matches, show_plots, mmia_threshold, current_
             else:
 
                 # Assuring continuity in MMIA_MA timesteps
-                MMIA_filtered[j] = TFG.fit_vector_in_MMIA_timesteps(current_data, int(matches[current_day]), j, 1, 1)
-                #MMIA_filtered[i][j] = current_data
-                
-                #split_MMIA_events(MMIA_filtered[j])                
+                MMIA_filtered[j] = TFG.fit_vector_in_MMIA_timesteps(current_data, int(matches[current_day]), j, show_plots, True)
                 
                 if show_plots == 1:
                     # MMIA representation with filter and with rectified time
@@ -2284,74 +2243,115 @@ def more_statistics(peaks_bin, matches, ssd_path):
     print('Done! Your final results can be accessed at ' + ssd_path + '/RESULTS.txt\n')
     print(' ')
 
-def integrate_signal_002(event):
-        
-    new_length = math.ceil((event[-1,0] - event[0,0]) / 0.002)
+def integrate_signal_002(event, isGLM):
 
-    # Current table of data (current day)
+    if isGLM == True:
 
-    int_data = np.zeros((new_length, 2))
+        new_length = math.ceil((event[-1,0] - event[0,0]) / 0.002)
+        int_data = np.zeros((new_length, 2))
+        pos_0 = 0
+
+        for k in range(new_length): # For every sample accounting zeroes at GLM rate
+            int_data[k,0] = round(event[0,0] + k*0.002, 3)
+            t_min = int_data[k,0]
+            t_max = t_min + 0.002
+            inside = True
+            count = 0
+
+            while inside == True:
+                raw_pos = pos_0 + count
+
+                if event[raw_pos,0] >= t_min and event[raw_pos,0] < t_max:
+                    int_data[k,1] = int_data[k,1] + event[raw_pos,6]
+
+                # Check if the next GLM_total_raw_data sample will be added
+
+                raw_end = (raw_pos == (len(event)-1))
+
+                if raw_end == False:
+                    inside = (event[raw_pos+1,0]) < t_max
+                    if inside == True:
+                        count = count + 1
+                    else:
+                        count = count + 1
+                        pos_0 = raw_pos
+                else:
+                    inside = False
     
-    pos_0 = 0
-    for k in range(new_length): # For every sample accounting zeros at GLM rate
-
-        # Fill time instance
-        int_data[k,0] = round(event[0,0] + k*0.002, 3)
+    else: # isGLM is false
+        # Just integrate by adding values inside current window of 0.002s
         
-        # Create windows of 0.002s and integrate their content
-        t_min = int_data[k,0]
-        t_max = t_min + 0.002
-        inside = True
-        count = 0
+        new_length = math.ceil((event[-1,0] - event[0,0]) / 0.002)
+
+        # Current table of data (current day)
+
+        int_data = np.zeros((new_length, 2))
         
-        while inside == True:
-            raw_pos = pos_0 + count
+        pos_0 = 0
+        for k in range(new_length): # For every sample accounting zeros at GLM rate
 
-            # Check if the next GLM_total_raw_data sample will be added
+            # Fill time instance
+            int_data[k,0] = round(event[0,0] + k*0.002, 3)
+            
+            # Create windows of 0.002s and integrate their content
+            t_min = int_data[k,0]
+            t_max = t_min + 0.002
+            inside = True
+            count = 0
+            
+            while inside == True:
+                raw_pos = pos_0 + count
 
-            raw_end = (raw_pos == (len(event)-1))
+                # Check if the next GLM_total_raw_data sample will be added
 
-            if raw_end == False:
-                inside = (event[raw_pos+1,0]) < t_max
-                if inside == True:
-                    count = count + 1
+                raw_end = (raw_pos == (len(event)-1))
 
-                else:   # Next sample is NOT inside current window
-                    window_positions = np.linspace(pos_0,pos_0+count,count+1,dtype=int)
+                if raw_end == False:
+                    inside = (event[raw_pos+1,0]) < t_max
+                    if inside == True:
+                        count = count + 1
+
+                    else:   # Next sample is NOT inside current window
+                        window_positions = np.linspace(pos_0,pos_0+count,count+1,dtype=int)
+                        int_data[k,1] = np.trapz(event[window_positions,1], x=event[window_positions,0])
+                        pos_0 = raw_pos+1
+                else:
+                    inside = False
+                    window_positions = np.linspace(pos_0,len(event)-1,len(event)-pos_0,dtype=int)
                     int_data[k,1] = np.trapz(event[window_positions,1], x=event[window_positions,0])
-                    pos_0 = raw_pos+1
-            else:
-                inside = False
-                window_positions = np.linspace(pos_0,len(event)-1,len(event)-pos_0,dtype=int)
-                int_data[k,1] = np.trapz(event[window_positions,1], x=event[window_positions,0])
                 
     print('Done!')
     return int_data
 
-def top_cloud_energy(GLM_xcorr, MMIA_xcorr, current_day, show_plots, tce_figures_path, glm_pix_size):
+def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figures_path, glm_pix_size):
     
-    glm_tce = [None] * len(GLM_xcorr)
-    mmia_tce = [None] * len(MMIA_xcorr)
+    glm_tce = [None] * len(GLM_data)
+    mmia_tce = [None] * len(MMIA_filtered)
     
-    for i in range(len(GLM_xcorr)): # For every event
+    for i in range(len(GLM_data)): # For every event
     
-        if type(GLM_xcorr[i]) == np.ndarray:
-            print('Converting instrumental signals to Top Cloud Energy for day %s event %d / %d' % (current_day, i, len(GLM_xcorr)))
+        if type(GLM_data[i]) == np.ndarray and type(MMIA_filtered[i]) == np.ndarray:
+            print('Converting instrumental signals to Top Cloud Energy for day %s event %d / %d' % (current_day, i, len(GLM_data)))
+            
             # GLM
-            glm_pix_size = 8*8 # [km^2]
-            GLM_cloud_E = GLM_xcorr[i]
+            GLM_cloud_E = GLM_data[i]
             GLM_cloud_E[:,1] = 6.612 * (GLM_cloud_E[:,1]*1e15) * glm_pix_size
-            glm_tce[i] = GLM_cloud_E
+            int_glm_tce = integrate_signal_002(GLM_cloud_E, True)
+            print(int_glm_tce.shape)
+            glm_tce[i] = fit_vector_in_MMIA_timesteps(int_glm_tce, int(current_day), i, False, False)
+            #glm_tce[i] = int_glm_tce
+            del int_glm_tce
             del GLM_cloud_E
+
 
             # MMIA
             # Computing the integral over MMIA signal
-            MMIA_cloud_E = integrate_signal_002(MMIA_xcorr[i])
+            MMIA_cloud_E = integrate_signal_002(MMIA_filtered[i],False)
 
-            MMIA_cloud_E[:,1] = (MMIA_cloud_E[:,1]*1e-6)*math.pi*400e3**2 #(Van der velde et al 2020)
-            
-            # Returning to MMIA sample rate
-            mmia_tce[i] = fit_vector_in_MMIA_timesteps(MMIA_cloud_E, int(current_day), i, False, 1)
+            MMIA_cloud_E[:,1] = MMIA_cloud_E[:,1]*math.pi*(400**2) #(Van der Velde et al 2020)
+            print(MMIA_cloud_E.shape)
+            mmia_tce[i] = fit_vector_in_MMIA_timesteps(MMIA_cloud_E, int(current_day), i, False, True)
+            #mmia_tce[i] = int_mmia_tce
             del MMIA_cloud_E
             
             if show_plots == True:
