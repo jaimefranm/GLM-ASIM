@@ -1,4 +1,4 @@
-import library as TFG
+import library_tce as TFG
 import numpy as np
 import pickle
 import os
@@ -7,7 +7,7 @@ import os
 #plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
 
 '''
-# TODO: Validar TCE
+# TODO: Empezar con el TCE conversion al principio del programa
 # TODO: Comprobar Pixel size y Factor división angle_margin para USA
 '''
 
@@ -481,7 +481,6 @@ if just_results == False:
         del MMIA_xcorr_norm
         
     del event_filenames
-
 
 
 ########### OUTPUTTING VALUABLE STATS ###########
