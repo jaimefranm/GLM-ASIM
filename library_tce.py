@@ -2335,9 +2335,8 @@ def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figur
             
             # GLM
             GLM_cloud_E = GLM_data[i]
-            GLM_cloud_E[:,1] = 6.612 * (GLM_cloud_E[:,1]*1e15) * glm_pix_size
+            GLM_cloud_E[:,1] = 6.612 * (GLM_data[i][:,1]*1e15) * glm_pix_size
             int_glm_tce = integrate_signal_002(GLM_cloud_E, True)
-            print(int_glm_tce.shape)
             glm_tce[i] = fit_vector_in_MMIA_timesteps(int_glm_tce, int(current_day), i, False, False)
             #glm_tce[i] = int_glm_tce
             del int_glm_tce
@@ -2348,8 +2347,7 @@ def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figur
             # Computing the integral over MMIA signal
             MMIA_cloud_E = integrate_signal_002(MMIA_filtered[i],False)
 
-            MMIA_cloud_E[:,1] = MMIA_cloud_E[:,1]*math.pi*(400**2) #(Van der Velde et al 2020)
-            print(MMIA_cloud_E.shape)
+            MMIA_cloud_E[:,1] = MMIA_cloud_E[:,1]*(math.pi)*(400**2)*1e-5 #(Van der Velde et al 2020)
             mmia_tce[i] = fit_vector_in_MMIA_timesteps(MMIA_cloud_E, int(current_day), i, False, True)
             #mmia_tce[i] = int_mmia_tce
             del MMIA_cloud_E
@@ -2362,7 +2360,7 @@ def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figur
                 plt.legend(['GLM','MMIA'])
                 plt.title('GLM (black) and MMIA (red) correlated signals converted to Top Cloud Energy for day %s event %d' % (current_day, i))
                 plt.xlabel('Time [s]')
-                plt.ylabel('Top Cloud Energy')
+                plt.ylabel('Top Cloud Energy [J]')
                 plt.grid('on')
                 plt.savefig(tce_figures_path + '/' + figure_name + '_both.pdf')
                 #plt.show()
@@ -2378,7 +2376,7 @@ def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figur
                 plt.plot(glm_tce[i][:,0], glm_tce[i][:,1], color='black', linewidth=0.5)
                 plt.title('GLM correlated signal converted to Top Cloud Energy for day %s event %d' % (current_day, i))
                 plt.xlabel('Time [s]')
-                plt.ylabel('Top Cloud Energy')
+                plt.ylabel('Top Cloud Energy [J]')
                 plt.grid('on')
                 plt.savefig(tce_figures_path + '/' + figure_name + '_glm.pdf')
                 #plt.show()
@@ -2394,7 +2392,7 @@ def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figur
                 plt.plot(mmia_tce[i][:,0], mmia_tce[i][:,1], color='red', linewidth=0.5)
                 plt.title('MMIA correlated signal converted to Top Cloud Energy for day %s event %d' % (current_day, i))
                 plt.xlabel('Time [s]')
-                plt.ylabel('Top Cloud Energy')
+                plt.ylabel('Top Cloud Energy [J]')
                 plt.grid('on')
                 plt.savefig(tce_figures_path + '/' + figure_name + '_mmia.pdf')
                 #plt.show()
