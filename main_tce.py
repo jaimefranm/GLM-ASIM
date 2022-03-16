@@ -26,16 +26,16 @@ first_execution = True
 show_plots = False
 
 # Boolean variable for pre-cross-correlated data
-pre_xc = False
+pre_xc = True
 
 # Boolean variable for pre-converted to top cloud energy
 pre_tce = False
 
 # Boolean variable for pre-detected peaks
-pre_detected_peaks = False
+pre_detected_peaks = True
 
 # Boolean variable for pre-studied peaks
-pre_studied = False
+pre_studied = True
 
 # Boolean variable for just outputting results
 just_results = False
@@ -45,17 +45,19 @@ pre_event_directories = True
 
 # Path to Hard Disk (with all MMIA files and where to store all files)
 #ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
-#ssd_path = '/Users/jaimemorandominguez/Desktop/special_tests/6071_results'
-ssd_path = '/home/lrg/Desktop/TCEpreXCORR'
+ssd_path = '/Users/jaimemorandominguez/Desktop/special_tests/6071_results'
+#ssd_path = '/home/lrg/Desktop/TCEpreXCORR'
+#ssd_path = '/home/lrg/Desktop/USA'
 
 # Path where MMIA's .cdf files are located
 #MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
-#MMIA_files_path = '/Users/jaimemorandominguez/Desktop/special_tests/6071'
-MMIA_files_path = '/media/lrg/colombia_2020/mmia_20'
+MMIA_files_path = '/Users/jaimemorandominguez/Desktop/special_tests/6071'
+#MMIA_files_path = '/media/lrg/colombia_2020/mmia_20'
+#MMIA_files_path = '/media/lrg/mmia_triggers_usa'
 
 # Path to MATLAB executable
-#matlab_path = '/Applications/MATLAB_R2021b.app/bin/matlab'
-matlab_path = '/usr/local/MATLAB/R2021b/bin/matlab'
+matlab_path = '/Applications/MATLAB_R2021b.app/bin/matlab'
+#matlab_path = '/usr/local/MATLAB/R2021b/bin/matlab'
 
 
 ### GLM ###
@@ -71,13 +73,13 @@ GLM_radius = 400 # [km]
 angle_margin = GLM_radius / 111.11 # or a given value in degrees
 
 # Boolean variable for downloading GLM .nc files from Google Cloud Storage
-pre_downloaded_GLM = False
+pre_downloaded_GLM = True
 
 # Boolean variable for pre-extracted files
-pre_extracted_GLM = False
+pre_extracted_GLM = True
 
 # Boolean variable for integrating GLM signals if not pre-done
-pre_conditioned_GLM = False
+pre_conditioned_GLM = True
 
 
 ### MMIA ###
@@ -86,7 +88,7 @@ pre_conditioned_GLM = False
 pre_extracted_MMIA = True
 
 # Boolean variable for conditioning MMIA data if not done before
-pre_conditioned_MMIA = False
+pre_conditioned_MMIA = True
 
 # Maximum length in seconds of each event
 event_length = 2 # [s]

@@ -2,7 +2,7 @@
 Library of necessary functions to run 'main.py' to download GLM data, condition
 MMIA and GLM data and compare it
 
-Please note every 'trigger' notation is an 'event'
+Please note every 'trigger' notation is an 'event' if existing
 
 Morán Domínguez, Jaime Francisco
 jaime.francisco.moran@upc.edu
@@ -24,6 +24,7 @@ from scipy.signal import lfilter
 from scipy.signal import correlate
 from google.cloud import storage
 import pickle
+import shutil
 import library_tce as TFG
 
 def get_MMIA_events(path_to_mmia_files, trigger_length):
@@ -418,7 +419,7 @@ def normalize(vector):
         vector_norm[i] = vector[i]/vector_max
     return vector_norm
 
-def GLM_processing(read_path, save_path, name, min_lat, max_lat, min_lon, max_lon, begin, end):
+def GLM_processing_old(read_path, save_path, name, min_lat, max_lat, min_lon, max_lon, begin, end):
     '''
     This function (given by Jesús López) analyses all .nc files in a certain
     directory, concatenating those files and extracting a .txt file with
@@ -470,7 +471,6 @@ def GLM_processing(read_path, save_path, name, min_lat, max_lat, min_lon, max_lo
     with os.scandir(read_path) as files:
         files = [file.name for file in files if file.is_file() and file.name.endswith('.nc')]
 
-#-------------------------------------------------
 
     for ind in range(0,len(files)):
         print(' ')
@@ -581,7 +581,6 @@ def GLM_processing(read_path, save_path, name, min_lat, max_lat, min_lon, max_lo
              
                 print('\n')
 
-#-------------------------------------------------
         
         ############ FLASH ID ##############
         # CUANDO SE ALMACENA LOS FICHEROS CON NOMBRES ORIGINALES        
@@ -720,6 +719,103 @@ def GLM_processing(read_path, save_path, name, min_lat, max_lat, min_lon, max_lo
 
     datatxt = np.column_stack((plotfinal1,plotfinal2,plotfinal3,plotfinal4,plotfinal5,plotfinal6,plotfinal7))
     np.savetxt(save_path+'/'+name+'.txt',datatxt,fmt=['%6f','%6f','%6f','%.0f','%6f','%6f','%.5e'])
+
+def GLM_processing(read_path, save_path, name, min_lat, max_lat, min_lon, max_lon, begin, end):
+
+    length=len([f for f in os.listdir(read_path) if os.path.isfile(os.path.join(read_path, f))])
+    files=os.listdir(read_path); 
+    #%%
+    for ind in range(0,length,1):
+
+            file1 = read_path+files[ind]
+            path = files[ind]
+            total = len(os.listdir(read_path))
+                
+                ############ FIX UNSIGNED ATTRIBUTE ##############
+            print('GLM file '+str(ind+1)+'/'+str(total))
+            print('GLM file '+ file1)    
+                
+    #%%        
+            ############ FLASH ID ##############
+            # CUANDO SE ALMACENA LOS FICHEROS CON NOMBRES ORIGINALES        
+            Start = (path[path.find("_s")+1:path.find("_e")])
+            Year = int(Start[1:5])
+            Day = int(Start[5:8])
+            Seconds = int(Start[8:10])*3600+int(Start[10:12])*60+int(Start[12:14])
+            
+            
+            data = datetime.datetime(Year, 1, 1) + datetime.timedelta(Day - 1)
+            data_int = int(data.strftime("%Y%m%d"))
+
+            g16glm = Dataset(file1,'r')       
+            event_time = g16glm.variables['event_time_offset'][:]
+            
+            a = len(event_time)
+            if a != 0:         
+                event_time_2=np.matlib.zeros((a, 1))
+                k2 = 0
+                if event_time[a-1]>20: # Cada fichero cotiene hasta 20 segundos?
+                    for y in event_time:
+                        if y>30000:
+                            y = y-131072
+                        event_time_2[k2] = y/1000
+                        k2 = k2 +1
+                else:    
+                    event_time_2 = event_time # Si no hay más eventos fuera del rango de los 20 segundos, no hay necesidad ser ajustados. 
+            
+            time_seconds = Seconds + event_time_2 # Segundos del día.
+            
+            # DF de los datos! 
+            # Inicio con DF temporal de las coordenadas de los flashes
+            
+            df_latlon_flash=pd.DataFrame(g16glm.variables['flash_id'][:],columns=['flash_id']); 
+            df_latlon_flash['flash_lat']=g16glm.variables['flash_lat'][:];
+            df_latlon_flash['flash_lon']=g16glm.variables['flash_lon'][:];
+            df_latlon_flash['flash_energy']=g16glm.variables['flash_energy'][:];
+
+            # DF de los flashes para hacer la búsqueda y asignar a los eventos el ID del flash! 
+                
+            df_glm_flash=pd.DataFrame(g16glm.variables['group_id'][:],columns=['group_id']);
+            df_glm_flash['group_pfid']=g16glm.variables['group_parent_flash_id'][:];
+            
+            df_glm_flash['flash_lat']=df_glm_flash['group_pfid'].map(df_latlon_flash.set_index('flash_id')['flash_lat'])
+            df_glm_flash['flash_lon']=df_glm_flash['group_pfid'].map(df_latlon_flash.set_index('flash_id')['flash_lon'])
+            df_glm_flash['flash_energy']=df_glm_flash['group_pfid'].map(df_latlon_flash.set_index('flash_id')['flash_energy'])
+            
+            # DF de eventos
+                
+            df_glm=pd.DataFrame(time_seconds,columns=['seconds_day']);
+            df_glm['event_lat']=g16glm.variables['event_lat'][:]
+            df_glm['event_lon']=g16glm.variables['event_lon'][:]    
+            ##### BÚSQUEDA DIRECTA DE LOS ID DE FLASHES DE SUS CORRESPONDIENTES EVENTOS 
+            df_glm['event_pgid']=g16glm.variables['event_parent_group_id'][:];
+            df_glm['flash_id']=df_glm['event_pgid'].map(df_glm_flash.set_index('group_id')['group_pfid'])
+            df_glm['flash_lat']=df_glm['event_pgid'].map(df_glm_flash.set_index('group_id')['flash_lat'])
+            df_glm['flash_lon']=df_glm['event_pgid'].map(df_glm_flash.set_index('group_id')['flash_lon'])
+            df_glm['event_energy']=g16glm.variables['event_energy'][:]     
+            df_glm['flash_energy']=df_glm['event_pgid'].map(df_glm_flash.set_index('group_id')['flash_energy'])
+            
+            # Elimino la columna del event_parent_group_id 
+            df_glm.drop("event_pgid", axis=1, inplace=True)
+            
+            df_glm_in = df_glm[(df_glm['event_lat'] >= min_lat) & (df_glm['event_lat'] <= max_lat) &
+                            (df_glm['event_lon'] >= min_lon) & (df_glm['event_lon'] <= max_lon) ]
+            
+            if ind==0:
+                
+                df_export=df_glm_in; 
+            
+            else:
+                df_export=pd.concat([df_export,df_glm_in])
+            
+            g16glm.close()
+
+    #df_export.to_csv(save_path+name, sep='\t', index=False,header=False);
+
+
+    sio.savemat(save_path+name,{'structs':df_export.apply(tuple).to_dict()})
+
+    shutil.rmtree(read_path, ignore_errors=False, onerror=None)
 
 def unify_GLM_data(output_path, MMIA_filtered, matches, current_day):
     '''
@@ -2251,7 +2347,7 @@ def integrate_signal_002(event, isGLM):
         int_data = np.zeros((new_length, 2))
         pos_0 = 0
 
-        for k in range(new_length): # For every sample accounting zeroes at GLM rate
+        for k in range(new_length): # For every sample accounting zeros at GLM rate
             int_data[k,0] = round(event[0,0] + k*0.002, 3)
             t_min = int_data[k,0]
             t_max = t_min + 0.002
@@ -2335,7 +2431,9 @@ def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figur
             
             # GLM
             GLM_cloud_E = GLM_data[i]
-            GLM_cloud_E[:,1] = 6.612 * (GLM_data[i][:,1]*1e15) * glm_pix_size
+            # GLM TCE = instrument value * 6.612 * pixel_area
+            #GLM_cloud_E[:,1] = 6.612 * (GLM_data[i][:,1]) * glm_pix_size #[J]
+            GLM_cloud_E[:,1] = 6611570247.933885 * (GLM_data[i][:,1]*1e15) * glm_pix_size*1e6 #[fJ]
             int_glm_tce = integrate_signal_002(GLM_cloud_E, True)
             glm_tce[i] = fit_vector_in_MMIA_timesteps(int_glm_tce, int(current_day), i, False, False)
             #glm_tce[i] = int_glm_tce
@@ -2346,12 +2444,14 @@ def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figur
             # MMIA
             # Computing the integral over MMIA signal
             MMIA_cloud_E = integrate_signal_002(MMIA_filtered[i],False)
-
-            MMIA_cloud_E[:,1] = MMIA_cloud_E[:,1]*(math.pi)*(400**2)*1e-5 #(Van der Velde et al 2020)
+            # MMIA TCE = instrument value * pi * z²
+            # Note that conversion from microJ to J gets neutralized by conversion from km² to m²
+            #MMIA_cloud_E[:,1] = MMIA_cloud_E[:,1]*(math.pi)*(400**2) #(Van der Velde et al 2020), [fJ]
+            MMIA_cloud_E[:,1] = MMIA_cloud_E[:,1]*(math.pi)*400e3**2*1e-5
             mmia_tce[i] = fit_vector_in_MMIA_timesteps(MMIA_cloud_E, int(current_day), i, False, True)
             #mmia_tce[i] = int_mmia_tce
             del MMIA_cloud_E
-            
+
             if show_plots == True:
                 plt.figure()
                 figure_name = current_day + '_' + str(i)
