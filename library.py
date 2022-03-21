@@ -2,7 +2,7 @@
 Library of necessary functions to run 'main.py' to download GLM data, condition
 MMIA and GLM data and compare it
 
-Please note every 'trigger' notation is an 'event'
+Please note every 'trigger' notation is an 'event' if existing
 
 Morán Domínguez, Jaime Francisco
 jaime.francisco.moran@upc.edu
@@ -24,7 +24,7 @@ from scipy.signal import lfilter
 from scipy.signal import correlate
 from google.cloud import storage
 import pickle
-import library as TFG
+import library_tce as TFG
 
 def get_MMIA_events(path_to_mmia_files, trigger_length):
 
@@ -192,7 +192,7 @@ def download_glm_from_google(ssd_path, year, day_year, t_ini, t_end):
     hour_ini = str(int(t_ini // 3600))
     if len(hour_ini) == 1:
         hour_ini = '0'+hour_ini
-    min_ini = str(int((t_ini/3600 - t_ini//3600) * 60))
+    min_ini = "%02d" % ((t_ini/3600 - t_ini//3600) * 60)
     seg_ini = str(int(((t_ini/3600 - t_ini//3600) * 60 - int((t_ini/3600 - t_ini//3600) * 60)) * 60))
     mseg_ini = '000'
 
@@ -200,7 +200,8 @@ def download_glm_from_google(ssd_path, year, day_year, t_ini, t_end):
     hour_end = str(int(t_end // 3600))
     if len(hour_end) == 1:
         hour_end = '0'+hour_end
-    min_end = str(int((t_end/3600 - t_end//3600) * 60))
+    #min_end = str(int((t_end/3600 - t_end//3600) * 60))
+    min_end = "%02d" % ((t_end/3600 - t_end//3600) * 60)
     seg_end = str(int(((t_end/3600 - t_end//3600) * 60 - int((t_end/3600 - t_end//3600) * 60)) * 60))
     mseg_end = '999'
 
@@ -418,7 +419,7 @@ def normalize(vector):
         vector_norm[i] = vector[i]/vector_max
     return vector_norm
 
-def GLM_processing(read_path, save_path, name, min_lat, max_lat, min_lon, max_lon, begin, end):
+def GLM_processing_old(read_path, save_path, name, min_lat, max_lat, min_lon, max_lon, begin, end):
     '''
     This function (given by Jesús López) analyses all .nc files in a certain
     directory, concatenating those files and extracting a .txt file with
@@ -470,7 +471,6 @@ def GLM_processing(read_path, save_path, name, min_lat, max_lat, min_lon, max_lo
     with os.scandir(read_path) as files:
         files = [file.name for file in files if file.is_file() and file.name.endswith('.nc')]
 
-#-------------------------------------------------
 
     for ind in range(0,len(files)):
         print(' ')
@@ -581,7 +581,6 @@ def GLM_processing(read_path, save_path, name, min_lat, max_lat, min_lon, max_lo
              
                 print('\n')
 
-#-------------------------------------------------
         
         ############ FLASH ID ##############
         # CUANDO SE ALMACENA LOS FICHEROS CON NOMBRES ORIGINALES        
@@ -721,6 +720,98 @@ def GLM_processing(read_path, save_path, name, min_lat, max_lat, min_lon, max_lo
     datatxt = np.column_stack((plotfinal1,plotfinal2,plotfinal3,plotfinal4,plotfinal5,plotfinal6,plotfinal7))
     np.savetxt(save_path+'/'+name+'.txt',datatxt,fmt=['%6f','%6f','%6f','%.0f','%6f','%6f','%.5e'])
 
+def GLM_processing(read_path, save_path, name, min_lat, max_lat, min_lon, max_lon, begin, end):
+
+    length=len([f for f in os.listdir(read_path) if os.path.isfile(os.path.join(read_path, f))])
+    files=os.listdir(read_path); 
+    #%%
+    for ind in range(0,length,1):
+
+            file1 = read_path+files[ind]
+            path = files[ind]
+            total = len(os.listdir(read_path))
+                
+                ############ FIX UNSIGNED ATTRIBUTE ##############
+            print('GLM file '+str(ind+1)+'/'+str(total))
+            print('GLM file '+ file1)    
+                
+    #%%        
+            ############ FLASH ID ##############
+            # CUANDO SE ALMACENA LOS FICHEROS CON NOMBRES ORIGINALES        
+            Start = (path[path.find("_s")+1:path.find("_e")])
+            Year = int(Start[1:5])
+            Day = int(Start[5:8])
+            Seconds = int(Start[8:10])*3600+int(Start[10:12])*60+int(Start[12:14])
+            
+            
+            data = datetime.datetime(Year, 1, 1) + datetime.timedelta(Day - 1)
+            data_int = int(data.strftime("%Y%m%d"))
+
+            g16glm = Dataset(file1,'r')       
+            event_time = g16glm.variables['event_time_offset'][:]
+            
+            a = len(event_time)
+            if a != 0:         
+                event_time_2=np.matlib.zeros((a, 1))
+                k2 = 0
+                if event_time[a-1]>20: # Cada fichero cotiene hasta 20 segundos?
+                    for y in event_time:
+                        if y>30000:
+                            y = y-131072
+                        event_time_2[k2] = y/1000
+                        k2 = k2 +1
+                else:    
+                    event_time_2 = event_time # Si no hay más eventos fuera del rango de los 20 segundos, no hay necesidad ser ajustados. 
+            
+            time_seconds = Seconds + event_time_2 # Segundos del día.
+            
+            # DF de los datos! 
+            # Inicio con DF temporal de las coordenadas de los flashes
+            
+            df_latlon_flash=pd.DataFrame(g16glm.variables['flash_id'][:],columns=['flash_id'])
+            df_latlon_flash['flash_lat']=g16glm.variables['flash_lat'][:]
+            df_latlon_flash['flash_lon']=g16glm.variables['flash_lon'][:]
+            df_latlon_flash['flash_energy']=g16glm.variables['flash_energy'][:]
+
+            # DF de los flashes para hacer la búsqueda y asignar a los eventos el ID del flash! 
+                
+            df_glm_flash=pd.DataFrame(g16glm.variables['group_id'][:],columns=['group_id'])
+            df_glm_flash['group_pfid']=g16glm.variables['group_parent_flash_id'][:]
+            
+            df_glm_flash['flash_lat']=df_glm_flash['group_pfid'].map(df_latlon_flash.set_index('flash_id')['flash_lat'])
+            df_glm_flash['flash_lon']=df_glm_flash['group_pfid'].map(df_latlon_flash.set_index('flash_id')['flash_lon'])
+            df_glm_flash['flash_energy']=df_glm_flash['group_pfid'].map(df_latlon_flash.set_index('flash_id')['flash_energy'])
+            
+            # DF de eventos
+                
+            df_glm=pd.DataFrame(time_seconds,columns=['seconds_day'])
+            df_glm['event_lat']=g16glm.variables['event_lat'][:]
+            df_glm['event_lon']=g16glm.variables['event_lon'][:]    
+            ##### BÚSQUEDA DIRECTA DE LOS ID DE FLASHES DE SUS CORRESPONDIENTES EVENTOS
+            df_glm['event_pgid']=g16glm.variables['event_parent_group_id'][:]
+            df_glm['flash_id']=df_glm['event_pgid'].map(df_glm_flash.set_index('group_id')['group_pfid'])
+            df_glm['flash_lat']=df_glm['event_pgid'].map(df_glm_flash.set_index('group_id')['flash_lat'])
+            df_glm['flash_lon']=df_glm['event_pgid'].map(df_glm_flash.set_index('group_id')['flash_lon'])
+            df_glm['event_energy']=g16glm.variables['event_energy'][:]     
+            df_glm['flash_energy']=df_glm['event_pgid'].map(df_glm_flash.set_index('group_id')['flash_energy'])
+            
+            # Elimino la columna del event_parent_group_id
+            df_glm.drop("event_pgid", axis=1, inplace=True)
+            
+            df_glm_in = df_glm[(df_glm['event_lat'] >= min_lat) & (df_glm['event_lat'] <= max_lat) &
+                            (df_glm['event_lon'] >= min_lon) & (df_glm['event_lon'] <= max_lon) ]
+            
+            if ind==0:
+                
+                df_export=df_glm_in; 
+            
+            else:
+                df_export=pd.concat([df_export,df_glm_in])
+            
+            g16glm.close()
+
+    df_export.to_csv(save_path+'/'+name+'.txt', sep=' ', index=False,header=False)
+
 def unify_GLM_data(output_path, MMIA_filtered, matches, current_day):
     '''
     This function gets all the GLM's extracted data .txt files from the
@@ -814,13 +905,15 @@ def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
     GLM_data = [None] * len(GLM_total_raw_data)
 
     # Integrating and extending GLM vectors by date
-    for j in range(len(GLM_total_raw_data)):   # For every trigger with GLM data
-            
+    for j in range(len(GLM_total_raw_data)):   # For every event with GLM data
+        
+        # If the resulting .txt/.csv has 0 or 1 line of data
         if type(GLM_total_raw_data[j]) == np.ndarray and len(GLM_total_raw_data[j]) <= 1:
-            print('GLM detection for day %d snippet %d is void!' % (int(matches[current_day]), j))
+            print('GLM detection for day %d event %d is void!' % (int(matches[current_day]), j))
             print(' ')
             GLM_total_raw_data[j] = None
 
+        # If not, check if only one timestep (still not enough data)
         elif type(GLM_total_raw_data[j]) == np.ndarray and len(GLM_total_raw_data[j]) != 0:
             just_one_timestep = 1
             check_pos = 1
@@ -836,7 +929,7 @@ def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
                         check_pos = check_pos + 1
 
         if type(GLM_total_raw_data[j]) == np.ndarray and just_one_timestep == 2:
-            print('GLM detection for day %d snippet %d contains only 1 timestep and will not be compared' % (int(matches[current_day]), j))
+            print('GLM detection for day %d event %d contains only 1 timestep and will not be compared' % (int(matches[current_day]), j))
             print(' ')
             GLM_total_raw_data[j] = None
 
@@ -848,7 +941,7 @@ def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
                 plt.plot(GLM_total_raw_data[j][:,0])
                 plt.xlabel('Samples')
                 plt.ylabel('Time [s]')
-                plt.title('Original GLM Time VS Samples for date %d snippet %d' % (int(matches[current_day]), j))
+                plt.title('Original GLM Time VS Samples for date %d event %d' % (int(matches[current_day]), j))
                 plt.grid('on')
                 plt.show()
                 # Clear the current axes
@@ -859,57 +952,21 @@ def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
                 plt.close('all')
 
             # Integration
-
-            print('Integrating GLM data, date %d (%d / %d), snippet %d / %d' % (int(matches[current_day]), current_day+1, len(matches), j, len(GLM_total_raw_data)))
-
-            GLM_length = math.ceil((GLM_total_raw_data[j][-1,0] - GLM_total_raw_data[j][0,0]) / 0.002)
-
-            # Current table of data (current day)
-
-            GLM_int_data = np.zeros((GLM_length, 2))
-
-            pos_0 = 0
-            for k in range(GLM_length): # For every sample accounting zeroes at GLM rate
-                GLM_int_data[k,0] = round(GLM_total_raw_data[j][0,0] + k*0.002, 3)
-                t_min = GLM_int_data[k,0]
-                t_max = t_min + 0.002
-                inside = True
-                count = 0
-
-                while inside == True:
-                    raw_pos = pos_0 + count
-
-                    if GLM_total_raw_data[j][raw_pos,0] >= t_min and GLM_total_raw_data[j][raw_pos,0] < t_max:
-                        GLM_int_data[k,1] = GLM_int_data[k,1] + GLM_total_raw_data[j][raw_pos,6]
-
-                    # Check if the next GLM_total_raw_data sample will be added
-
-                    raw_end = (raw_pos == (len(GLM_total_raw_data[j])-1))
-
-                    if raw_end == False:
-                        inside = (GLM_total_raw_data[j][raw_pos+1,0]) < t_max
-                        if inside == True:
-                            count = count + 1
-                        else:
-                            count = count + 1
-                            pos_0 = raw_pos
-                    else:
-                        inside = False
-            print('Done!')
-            print(len(GLM_int_data))
-            GLM_data[j] = fit_vector_in_MMIA_timesteps(GLM_int_data, int(matches[current_day]), j, show_plots, 0)
+            # GLM_int_data = integrate_signal_002(GLM_total_raw_data[j], True)
+            # GLM_data[j] = fit_vector_in_MMIA_timesteps(GLM_int_data, int(matches[current_day]), j, show_plots, 0)
+            GLM_data[j] = GLM_total_raw_data[j][:,[0,-1]]
             
             
             # Check for too short snippet vectors
-            if len(GLM_data[j])<=100:
-                print('Data for day %s snippet %d is too poor, only %d samples. This snippet will be omitted.' % (matches[current_day], j, len(GLM_data[j])))
+            if len(GLM_data[j])<=5:
+                print('Data for day %s event %d is too poor, only %d samples. This event will be omitted.' % (matches[current_day], j, len(GLM_data[j])))
                 GLM_data[j] = None
 
             if show_plots == 1 and type(GLM_data[j]) == np.ndarray:
                 # Plotting lineality in GLM time vector with GLM sampling rate
                 plt.figure()
-                plt.plot(GLM_int_data[:,0])
-                plt.title('GLM Time vector of day %d snippet %d with 0.002s period' % (int(matches[current_day]), j))
+                plt.plot(GLM_data[j][:,0])
+                plt.title('GLM Time vector of day %d event %d with 0.002s period' % (int(matches[current_day]), j))
                 plt.xlabel('Samples')
                 plt.ylabel('Time [s]')
                 plt.grid('on')
@@ -923,9 +980,9 @@ def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
 
                 # Integrated GLM radiance vs time graph representation
                 plt.figure()
-                plt.plot(GLM_int_data[:,0],GLM_int_data[:,1], linewidth=0.5, color='black')
+                plt.plot(GLM_data[j][:,0],GLM_data[j][:,1], linewidth=0.5, color='black')
                 plt.grid('on')
-                plt.title('GLM signal of day %d snippet %d with GLM sample rate (0.002s)' % (int(matches[current_day]), j))
+                plt.title('GLM signal of day %d event %d with GLM sample rate (0.002s)' % (int(matches[current_day]), j))
                 plt.xlabel('Time [s]')
                 plt.ylabel('Radiance [J]')
                 plt.show()
@@ -936,10 +993,7 @@ def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
                 # Closes all the figure windows
                 plt.close('all')
                 
-                
-            del GLM_int_data
-                
-    print('Integration of GLM vectors done!')
+    print('Conditioning of GLM vectors done!')
     print(' ')
 
     return GLM_data
@@ -1166,10 +1220,7 @@ def condition_MMIA_data(MMIA_data, matches, show_plots, mmia_threshold, current_
             else:
 
                 # Assuring continuity in MMIA_MA timesteps
-                MMIA_filtered[j] = TFG.fit_vector_in_MMIA_timesteps(current_data, int(matches[current_day]), j, 1, 1)
-                #MMIA_filtered[i][j] = current_data
-                
-                #split_MMIA_events(MMIA_filtered[j])                
+                MMIA_filtered[j] = TFG.fit_vector_in_MMIA_timesteps(current_data, int(matches[current_day]), j, show_plots, True)
                 
                 if show_plots == 1:
                     # MMIA representation with filter and with rectified time
@@ -2285,85 +2336,123 @@ def more_statistics(peaks_bin, matches, ssd_path):
     print('Done! Your final results can be accessed at ' + ssd_path + '/RESULTS.txt\n')
     print(' ')
 
-def integrate_signal_002(event):
-        
-    new_length = math.ceil((event[-1,0] - event[0,0]) / 0.002)
+def integrate_signal_002(event, isGLM):
 
-    # Current table of data (current day)
+    if isGLM == True:
 
-    int_data = np.zeros((new_length, 2))
+        new_length = math.ceil((event[-1,0] - event[0,0]) / 0.002)
+        int_data = np.zeros((new_length, 2))
+        pos_0 = 0
+
+        for k in range(new_length): # For every sample accounting zeros at GLM rate
+            int_data[k,0] = round(event[0,0] + k*0.002, 3)
+            t_min = int_data[k,0]
+            t_max = t_min + 0.002
+            inside = True
+            count = 0
+
+            while inside == True:
+                raw_pos = pos_0 + count
+
+                if event[raw_pos,0] >= t_min and event[raw_pos,0] < t_max:
+                    # Simply add values inside window
+                    int_data[k,1] = int_data[k,1] + event[raw_pos,1]
+
+                # Check if the next GLM_total_raw_data sample will be added
+
+                raw_end = (raw_pos == (len(event)-1))
+
+                if raw_end == False:
+                    inside = (event[raw_pos+1,0]) < t_max
+                    if inside == True:
+                        count = count + 1
+                    else:
+                        count = count + 1
+                        pos_0 = raw_pos
+                else:
+                    inside = False
     
-    pos_0 = 0
-    for k in range(new_length): # For every sample accounting zeros at GLM rate
-
-        # Fill time instance
-        int_data[k,0] = round(event[0,0] + k*0.002, 3)
+    else: # isGLM is false
+        # Just integrate by adding values inside current window of 0.002s
         
-        # Create windows of 0.002s and integrate their content
-        t_min = int_data[k,0]
-        t_max = t_min + 0.002
-        inside = True
-        count = 0
+        new_length = math.ceil((event[-1,0] - event[0,0]) / 0.002)
+
+        # Current table of data (current day)
+
+        int_data = np.zeros((new_length, 2))
         
-        while inside == True:
-            raw_pos = pos_0 + count
+        pos_0 = 0
+        for k in range(new_length): # For every sample accounting zeros at GLM rate
 
-            # Check if the next GLM_total_raw_data sample will be added
+            # Fill time instance
+            int_data[k,0] = round(event[0,0] + k*0.002, 3)
+            
+            # Create windows of 0.002s and integrate their content
+            t_min = int_data[k,0]
+            t_max = t_min + 0.002
+            inside = True
+            count = 0
+            
+            while inside == True:
+                raw_pos = pos_0 + count
 
-            raw_end = (raw_pos == (len(event)-1))
+                # Check if the next GLM_total_raw_data sample will be added
 
-            if raw_end == False:
-                inside = (event[raw_pos+1,0]) < t_max
-                if inside == True:
-                    count = count + 1
+                raw_end = (raw_pos == (len(event)-1))
 
-                else:   # Next sample is NOT inside current window
-                    window_positions = np.linspace(pos_0,pos_0+count,count+1,dtype=int)
+                if raw_end == False:
+                    inside = (event[raw_pos+1,0]) < t_max
+                    if inside == True:
+                        count = count + 1
+
+                    else:   # Next sample is NOT inside current window
+                        window_positions = np.linspace(pos_0,pos_0+count,count+1,dtype=int)
+                        int_data[k,1] = np.trapz(event[window_positions,1], x=event[window_positions,0])
+                        pos_0 = raw_pos+1
+                else:
+                    inside = False
+                    window_positions = np.linspace(pos_0,len(event)-1,len(event)-pos_0,dtype=int)
                     int_data[k,1] = np.trapz(event[window_positions,1], x=event[window_positions,0])
-                    pos_0 = raw_pos+1
-            else:
-                inside = False
-                window_positions = np.linspace(pos_0,len(event)-1,len(event)-pos_0,dtype=int)
-                int_data[k,1] = np.trapz(event[window_positions,1], x=event[window_positions,0])
                 
     print('Done!')
     return int_data
 
-def top_cloud_energy(GLM_xcorr, MMIA_xcorr, current_day, show_plots, tce_figures_path, glm_pix_size):
+def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figures_path, glm_pix_size):
     
-    glm_tce = [None] * len(GLM_xcorr)
-    mmia_tce = [None] * len(MMIA_xcorr)
+    glm_tce = [None] * len(GLM_data)
+    mmia_tce = [None] * len(MMIA_filtered)
     
-    for i in range(len(GLM_xcorr)): # For every event
+    for i in range(len(GLM_data)): # For every event
     
-        if type(GLM_xcorr[i]) == np.ndarray:
-            print('Converting instrumental signals to Top Cloud Energy for day %s event %d / %d' % (current_day, i, len(GLM_xcorr)))
+        if type(GLM_data[i]) == np.ndarray and type(MMIA_filtered[i]) == np.ndarray:
+            print('Converting instrumental signals to Top Cloud Energy for day %s event %d / %d' % (current_day, i, len(GLM_data)))
+            
             # GLM
-            glm_pix_size = 8*8 # [km^2]
-            GLM_cloud_E = GLM_xcorr[i]
-            GLM_cloud_E[:,1] = 6.612 * (GLM_cloud_E[:,1]*1e15) * glm_pix_size
-            glm_tce[i] = GLM_cloud_E
+            GLM_cloud_E = GLM_data[i]
+            GLM_cloud_E[:,1] = GLM_data[i][:,1] * 6611570247.933885 * glm_pix_size*1e6 #[J]
+            int_glm_tce = integrate_signal_002(GLM_cloud_E, True)
+            glm_tce[i] = fit_vector_in_MMIA_timesteps(int_glm_tce, int(current_day), i, False, False)
+            del int_glm_tce
             del GLM_cloud_E
+
 
             # MMIA
             # Computing the integral over MMIA signal
-            MMIA_cloud_E = integrate_signal_002(MMIA_xcorr[i])
-
-            MMIA_cloud_E[:,1] = (MMIA_cloud_E[:,1]*1e-6)*math.pi*400e3**2 #(Van der velde et al 2020)
-            
-            # Returning to MMIA sample rate
-            mmia_tce[i] = fit_vector_in_MMIA_timesteps(MMIA_cloud_E, int(current_day), i, False, 1)
+            MMIA_cloud_E = integrate_signal_002(MMIA_filtered[i],False) # [micro J/m^2]
+            MMIA_cloud_E[:,1] = MMIA_cloud_E[:,1]*1e-6*(math.pi)*(400e3**2) #(Van der Velde et al 2020), [J]
+            mmia_tce[i] = fit_vector_in_MMIA_timesteps(MMIA_cloud_E, int(current_day), i, False, True)
             del MMIA_cloud_E
-            
+
             if show_plots == True:
-                plt.figure()
+                plt.figure(figsize=(10, 6))
                 figure_name = current_day + '_' + str(i)
                 plt.plot(glm_tce[i][:,0], glm_tce[i][:,1], color='black', linewidth=0.5)
                 plt.plot(mmia_tce[i][:,0], mmia_tce[i][:,1], color='red', linewidth=0.5)
+                plt.yscale('log')
                 plt.legend(['GLM','MMIA'])
                 plt.title('GLM (black) and MMIA (red) correlated signals converted to Top Cloud Energy for day %s event %d' % (current_day, i))
                 plt.xlabel('Time [s]')
-                plt.ylabel('Top Cloud Energy')
+                plt.ylabel('Top Cloud Energy [J]')
                 plt.grid('on')
                 plt.savefig(tce_figures_path + '/' + figure_name + '_both.pdf')
                 #plt.show()
@@ -2374,12 +2463,12 @@ def top_cloud_energy(GLM_xcorr, MMIA_xcorr, current_day, show_plots, tce_figures
                 # Closes all the figure windows
                 plt.close('all')
                 
-                plt.figure()
+                plt.figure(figsize=(10, 6))
                 figure_name = current_day + '_' + str(i)
                 plt.plot(glm_tce[i][:,0], glm_tce[i][:,1], color='black', linewidth=0.5)
                 plt.title('GLM correlated signal converted to Top Cloud Energy for day %s event %d' % (current_day, i))
                 plt.xlabel('Time [s]')
-                plt.ylabel('Top Cloud Energy')
+                plt.ylabel('Top Cloud Energy [J]')
                 plt.grid('on')
                 plt.savefig(tce_figures_path + '/' + figure_name + '_glm.pdf')
                 #plt.show()
@@ -2390,12 +2479,12 @@ def top_cloud_energy(GLM_xcorr, MMIA_xcorr, current_day, show_plots, tce_figures
                 # Closes all the figure windows
                 plt.close('all')
                 
-                plt.figure()
+                plt.figure(figsize=(10, 6))
                 figure_name = current_day + '_' + str(i)
                 plt.plot(mmia_tce[i][:,0], mmia_tce[i][:,1], color='red', linewidth=0.5)
                 plt.title('MMIA correlated signal converted to Top Cloud Energy for day %s event %d' % (current_day, i))
                 plt.xlabel('Time [s]')
-                plt.ylabel('Top Cloud Energy')
+                plt.ylabel('Top Cloud Energy [J]')
                 plt.grid('on')
                 plt.savefig(tce_figures_path + '/' + figure_name + '_mmia.pdf')
                 #plt.show()
