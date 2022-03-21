@@ -20,7 +20,7 @@ import os
 ### GENERAL ###
 
 # Boolean variable for setting everything for the first execution
-first_execution = True
+first_execution = False
 
 # Boolean variable for generating plots
 show_plots = False
@@ -45,13 +45,13 @@ pre_event_directories = True
 
 # Path to Hard Disk (with all MMIA files and where to store all files)
 #ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
-ssd_path = '/Users/jaimemorandominguez/Desktop/special_tests/6071_results'
+ssd_path = '/Users/jaimemorandominguez/Desktop/special_tests/van_der_velde_results'
 #ssd_path = '/home/lrg/Desktop/TCEpreXCORR'
 #ssd_path = '/home/lrg/Desktop/USA'
 
 # Path where MMIA's .cdf files are located
 #MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
-MMIA_files_path = '/Users/jaimemorandominguez/Desktop/special_tests/6071'
+MMIA_files_path = '/Users/jaimemorandominguez/Desktop/special_tests/van_der_velde/mmia_cdf'
 #MMIA_files_path = '/media/lrg/colombia_2020/mmia_20'
 #MMIA_files_path = '/media/lrg/mmia_triggers_usa'
 
@@ -65,8 +65,9 @@ matlab_path = '/Applications/MATLAB_R2021b.app/bin/matlab'
 # Time in seconds to analyze GLM before and after MMIA's time snippet
 cropping_margin = 0.5
 
-# GLM pixel size in Colombia
-glm_pix_size = 8*8  # [km^2]
+# GLM pixel size [km²]
+glm_pix_size = 8*8  # Colombia
+#glm_pix_size = 78   # USA
 
 # Plus of angle in latitude and longitude to snip GLM data
 GLM_radius = 400 # [km]
@@ -302,7 +303,7 @@ if just_results == False:
             [glm_tce, mmia_tce] = pickle.load(f)
             f.close()
 
-        del GLM_data
+        #del GLM_data
         del MMIA_filtered
 
 

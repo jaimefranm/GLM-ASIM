@@ -24,7 +24,6 @@ from scipy.signal import lfilter
 from scipy.signal import correlate
 from google.cloud import storage
 import pickle
-import shutil
 import library_tce as TFG
 
 def get_MMIA_events(path_to_mmia_files, trigger_length):
@@ -193,7 +192,7 @@ def download_glm_from_google(ssd_path, year, day_year, t_ini, t_end):
     hour_ini = str(int(t_ini // 3600))
     if len(hour_ini) == 1:
         hour_ini = '0'+hour_ini
-    min_ini = str(int((t_ini/3600 - t_ini//3600) * 60))
+    min_ini = "%02d" % ((t_ini/3600 - t_ini//3600) * 60)
     seg_ini = str(int(((t_ini/3600 - t_ini//3600) * 60 - int((t_ini/3600 - t_ini//3600) * 60)) * 60))
     mseg_ini = '000'
 
@@ -201,7 +200,8 @@ def download_glm_from_google(ssd_path, year, day_year, t_ini, t_end):
     hour_end = str(int(t_end // 3600))
     if len(hour_end) == 1:
         hour_end = '0'+hour_end
-    min_end = str(int((t_end/3600 - t_end//3600) * 60))
+    #min_end = str(int((t_end/3600 - t_end//3600) * 60))
+    min_end = "%02d" % ((t_end/3600 - t_end//3600) * 60)
     seg_end = str(int(((t_end/3600 - t_end//3600) * 60 - int((t_end/3600 - t_end//3600) * 60)) * 60))
     mseg_end = '999'
 
@@ -810,12 +810,7 @@ def GLM_processing(read_path, save_path, name, min_lat, max_lat, min_lon, max_lo
             
             g16glm.close()
 
-    #df_export.to_csv(save_path+name, sep='\t', index=False,header=False);
-
-
-    sio.savemat(save_path+name,{'structs':df_export.apply(tuple).to_dict()})
-
-    shutil.rmtree(read_path, ignore_errors=False, onerror=None)
+    df_export.to_csv(save_path+name, sep='\t', index=False,header=False)
 
 def unify_GLM_data(output_path, MMIA_filtered, matches, current_day):
     '''
@@ -910,13 +905,15 @@ def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
     GLM_data = [None] * len(GLM_total_raw_data)
 
     # Integrating and extending GLM vectors by date
-    for j in range(len(GLM_total_raw_data)):   # For every trigger with GLM data
-            
+    for j in range(len(GLM_total_raw_data)):   # For every event with GLM data
+        
+        # If the resulting .txt/.csv has 0 or 1 line of data
         if type(GLM_total_raw_data[j]) == np.ndarray and len(GLM_total_raw_data[j]) <= 1:
-            print('GLM detection for day %d snippet %d is void!' % (int(matches[current_day]), j))
+            print('GLM detection for day %d event %d is void!' % (int(matches[current_day]), j))
             print(' ')
             GLM_total_raw_data[j] = None
 
+        # If not, check if only one timestep (still not enough data)
         elif type(GLM_total_raw_data[j]) == np.ndarray and len(GLM_total_raw_data[j]) != 0:
             just_one_timestep = 1
             check_pos = 1
@@ -932,7 +929,7 @@ def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
                         check_pos = check_pos + 1
 
         if type(GLM_total_raw_data[j]) == np.ndarray and just_one_timestep == 2:
-            print('GLM detection for day %d snippet %d contains only 1 timestep and will not be compared' % (int(matches[current_day]), j))
+            print('GLM detection for day %d event %d contains only 1 timestep and will not be compared' % (int(matches[current_day]), j))
             print(' ')
             GLM_total_raw_data[j] = None
 
@@ -944,7 +941,7 @@ def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
                 plt.plot(GLM_total_raw_data[j][:,0])
                 plt.xlabel('Samples')
                 plt.ylabel('Time [s]')
-                plt.title('Original GLM Time VS Samples for date %d snippet %d' % (int(matches[current_day]), j))
+                plt.title('Original GLM Time VS Samples for date %d event %d' % (int(matches[current_day]), j))
                 plt.grid('on')
                 plt.show()
                 # Clear the current axes
@@ -957,12 +954,12 @@ def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
             # Integration
             # GLM_int_data = integrate_signal_002(GLM_total_raw_data[j], True)
             # GLM_data[j] = fit_vector_in_MMIA_timesteps(GLM_int_data, int(matches[current_day]), j, show_plots, 0)
-            GLM_data[j] = GLM_total_raw_data[j]
+            GLM_data[j] = GLM_total_raw_data[0][:,[0,-1]]
             
             
             # Check for too short snippet vectors
             if len(GLM_data[j])<=5:
-                print('Data for day %s snippet %d is too poor, only %d samples. This snippet will be omitted.' % (matches[current_day], j, len(GLM_data[j])))
+                print('Data for day %s event %d is too poor, only %d samples. This event will be omitted.' % (matches[current_day], j, len(GLM_data[j])))
                 GLM_data[j] = None
 
             if show_plots == 1 and type(GLM_data[j]) == np.ndarray:
@@ -1532,7 +1529,7 @@ def extract_GLM(dir_path, output_path, trigger_limits, matches, MMIA_filtered, a
                 #start_time = trigger_limits[j][0,4] - cropping_margin
                 #end_time = trigger_limits[j][0,5] + cropping_margin
 
-                TFG.GLM_processing(dir_path+'/'+trigger_name+'/', output_path, trigger_name, min_lat, max_lat, min_lon, max_lon, start_time, end_time)
+                TFG.GLM_processing_old(dir_path+'/'+trigger_name+'/', output_path, trigger_name, min_lat, max_lat, min_lon, max_lon, start_time, end_time)
                 
                 print(' ')
                 print('Date %s snippet %d done\n' % (matches[current_day], j))
@@ -2358,7 +2355,8 @@ def integrate_signal_002(event, isGLM):
                 raw_pos = pos_0 + count
 
                 if event[raw_pos,0] >= t_min and event[raw_pos,0] < t_max:
-                    int_data[k,1] = int_data[k,1] + event[raw_pos,6]
+                    # Simply add values inside window
+                    int_data[k,1] = int_data[k,1] + event[raw_pos,1]
 
                 # Check if the next GLM_total_raw_data sample will be added
 
@@ -2431,32 +2429,26 @@ def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figur
             
             # GLM
             GLM_cloud_E = GLM_data[i]
-            # GLM TCE = instrument value * 6.612 * pixel_area
-            #GLM_cloud_E[:,1] = 6.612 * (GLM_data[i][:,1]) * glm_pix_size #[J]
-            GLM_cloud_E[:,1] = 6611570247.933885 * (GLM_data[i][:,1]*1e15) * glm_pix_size*1e6 #[fJ]
+            GLM_cloud_E[:,1] = GLM_data[i][:,1] * 6611570247.933885 * glm_pix_size*1e6 #[J]
             int_glm_tce = integrate_signal_002(GLM_cloud_E, True)
             glm_tce[i] = fit_vector_in_MMIA_timesteps(int_glm_tce, int(current_day), i, False, False)
-            #glm_tce[i] = int_glm_tce
             del int_glm_tce
             del GLM_cloud_E
 
 
             # MMIA
             # Computing the integral over MMIA signal
-            MMIA_cloud_E = integrate_signal_002(MMIA_filtered[i],False)
-            # MMIA TCE = instrument value * pi * z²
-            # Note that conversion from microJ to J gets neutralized by conversion from km² to m²
-            #MMIA_cloud_E[:,1] = MMIA_cloud_E[:,1]*(math.pi)*(400**2) #(Van der Velde et al 2020), [fJ]
-            MMIA_cloud_E[:,1] = MMIA_cloud_E[:,1]*(math.pi)*400e3**2*1e-5
+            MMIA_cloud_E = integrate_signal_002(MMIA_filtered[i],False) # [micro J/m^2]
+            MMIA_cloud_E[:,1] = MMIA_cloud_E[:,1]*1e-6*(math.pi)*(400e3**2) #(Van der Velde et al 2020), [J]
             mmia_tce[i] = fit_vector_in_MMIA_timesteps(MMIA_cloud_E, int(current_day), i, False, True)
-            #mmia_tce[i] = int_mmia_tce
             del MMIA_cloud_E
 
             if show_plots == True:
-                plt.figure()
+                plt.figure(figsize=(10, 6))
                 figure_name = current_day + '_' + str(i)
                 plt.plot(glm_tce[i][:,0], glm_tce[i][:,1], color='black', linewidth=0.5)
                 plt.plot(mmia_tce[i][:,0], mmia_tce[i][:,1], color='red', linewidth=0.5)
+                plt.yscale('log')
                 plt.legend(['GLM','MMIA'])
                 plt.title('GLM (black) and MMIA (red) correlated signals converted to Top Cloud Energy for day %s event %d' % (current_day, i))
                 plt.xlabel('Time [s]')
@@ -2471,7 +2463,7 @@ def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figur
                 # Closes all the figure windows
                 plt.close('all')
                 
-                plt.figure()
+                plt.figure(figsize=(10, 6))
                 figure_name = current_day + '_' + str(i)
                 plt.plot(glm_tce[i][:,0], glm_tce[i][:,1], color='black', linewidth=0.5)
                 plt.title('GLM correlated signal converted to Top Cloud Energy for day %s event %d' % (current_day, i))
@@ -2487,7 +2479,7 @@ def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figur
                 # Closes all the figure windows
                 plt.close('all')
                 
-                plt.figure()
+                plt.figure(figsize=(10, 6))
                 figure_name = current_day + '_' + str(i)
                 plt.plot(mmia_tce[i][:,0], mmia_tce[i][:,1], color='red', linewidth=0.5)
                 plt.title('MMIA correlated signal converted to Top Cloud Energy for day %s event %d' % (current_day, i))
