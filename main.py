@@ -1,4 +1,4 @@
-import library_tce as TFG
+import library as TFG
 import numpy as np
 import pickle
 import os
@@ -6,8 +6,8 @@ import os
 # Just for plot presentation in LaTeX Style (slows the program)
 #plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
 
-# TODO: Empezar con el TCE conversion al principio del programa
-# TODO: Comprobar Pixel size y Factor división angle_margin para USA
+# TODO: Cambiar salida TCE a frecuencia GLM
+# TODO: Sacar los 3 fotómetros
 
 
 '''
@@ -20,19 +20,19 @@ import os
 ### GENERAL ###
 
 # Boolean variable for setting everything for the first execution
-first_execution = True
+first_execution = False
 
 # Boolean variable for generating plots
 show_plots = False
 
 # Boolean variable for pre-cross-correlated data
-pre_xc = True
+pre_xc = False
 
 # Boolean variable for pre-converted to top cloud energy
 pre_tce = False
 
 # Boolean variable for pre-detected peaks
-pre_detected_peaks = True
+pre_detected_peaks = False
 
 # Boolean variable for pre-studied peaks
 pre_studied = True
@@ -77,10 +77,10 @@ angle_margin = GLM_radius / 111.11 # or a given value in degrees
 pre_downloaded_GLM = True
 
 # Boolean variable for pre-extracted files
-pre_extracted_GLM = True
+pre_extracted_GLM = False
 
 # Boolean variable for integrating GLM signals if not pre-done
-pre_conditioned_GLM = True
+pre_conditioned_GLM = False
 
 
 ### MMIA ###

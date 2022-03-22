@@ -24,7 +24,7 @@ from scipy.signal import lfilter
 from scipy.signal import correlate
 from google.cloud import storage
 import pickle
-import library_tce as TFG
+import library as TFG
 
 def get_MMIA_events(path_to_mmia_files, trigger_length):
 
@@ -847,7 +847,7 @@ def unify_GLM_data(output_path, MMIA_filtered, matches, current_day):
     if size == 0:
         print('No GLM .txt files found!')
 
-    column_subset = ['Time', 'Event_lat', 'Event_lon', 'Event_ID', 'Flash_lat', 'Flash_lon', 'Radiance']
+    column_subset = ['Time', 'Event_lat', 'Event_lon', 'Event_ID', 'Flash_lat', 'Flash_lon', 'Event_radiance', 'Flash_radiance']
 
     for i in range(size):
 
@@ -865,7 +865,8 @@ def unify_GLM_data(output_path, MMIA_filtered, matches, current_day):
             current_path = output_path + '/' + files[i]
 
             # Uploading the GLM's .txt using Pandas to sort it by time
-            current_data = pd.read_csv(current_path, names=column_subset, sep='\s+')
+            #current_data = pd.read_csv(current_path, names=column_subset, sep='\s+')
+            current_data = pd.read_csv(current_path, names=column_subset, sep=' ')
             # Sorting data by time
             current_data = current_data.sort_values(by='Time')
             # Translating Pandas Dataframe to Numpy Matrix for easy data access
@@ -954,8 +955,7 @@ def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
             # Integration
             # GLM_int_data = integrate_signal_002(GLM_total_raw_data[j], True)
             # GLM_data[j] = fit_vector_in_MMIA_timesteps(GLM_int_data, int(matches[current_day]), j, show_plots, 0)
-            GLM_data[j] = GLM_total_raw_data[j][:,[0,-1]]
-            
+            GLM_data[j] = GLM_total_raw_data[j][:,[0,6]] # Time and instrument signal
             
             # Check for too short snippet vectors
             if len(GLM_data[j])<=5:
