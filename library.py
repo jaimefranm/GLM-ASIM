@@ -275,11 +275,11 @@ def upload_MMIA_mats(ssd_path, trigger_filenames, matches, current_day):
         
         if data_date == matches[current_day]:
         
-            if len(data_files[i]) == 19: # Trigger number is 1 digit
+            if len(data_files[i]) == 19: # Event number is 1 digit
                 data_trigger = data_files[i][9:10]
-            elif len(data_files[i]) == 20:  # Trigger number is 2 digits
+            elif len(data_files[i]) == 20:  # Event number is 2 digits
                 data_trigger = data_files[i][9:11]
-            elif len(data_files[i]) == 21:  # Trigger number is 3 digits (not expected)
+            elif len(data_files[i]) == 21:  # Event number is 3 digits (not expected but sometimes)
                 data_trigger = data_files[i][9:12]
 
             data_mat = sio.loadmat(mmia_mat_files_path+'/'+data_date+'_' + data_trigger +'_data.mat')
@@ -955,7 +955,7 @@ def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
             # Integration
             # GLM_int_data = integrate_signal_002(GLM_total_raw_data[j], True)
             # GLM_data[j] = fit_vector_in_MMIA_timesteps(GLM_int_data, int(matches[current_day]), j, show_plots, 0)
-            GLM_data[j] = GLM_total_raw_data[j][:,[0,6]] # Time and instrument signal
+            GLM_data[j] = GLM_total_raw_data[j][:,[0,6]] # Time and instrument signal for event radiance
             
             # Check for too short snippet vectors
             if len(GLM_data[j])<=5:
@@ -1494,7 +1494,7 @@ def extract_GLM(dir_path, output_path, trigger_limits, matches, MMIA_filtered, a
     .txt files for every snippet with GLM data prepared to be analyzed.
     '''
 
-    print('Extracting data from GLM .nc files into snippet .txt...')
+    print('Extracting data from GLM .nc files into event .txt...')
     print(' ')
     
     if current_day == 0:
@@ -1505,7 +1505,7 @@ def extract_GLM(dir_path, output_path, trigger_limits, matches, MMIA_filtered, a
 
         if type(MMIA_filtered[j]) == np.ndarray and type(trigger_limits[j]) == np.ndarray:
 
-            print('Extracting GLM data for date %d snippet %d...' % (int(matches[current_day]), j))
+            print('Extracting GLM data for date %d event %d...' % (int(matches[current_day]), j))
             
             trigger_name = matches[current_day] + '_' + str(j)
             trigger_path = dir_path + '/' + trigger_name
@@ -1514,7 +1514,7 @@ def extract_GLM(dir_path, output_path, trigger_limits, matches, MMIA_filtered, a
                 files = [file.name for file in files if file.is_file() and file.name.endswith('.nc')]
             
             if len(files) == 0:
-                print('No GLM .nc files could be downloaded for day %s, snippet %d\n' % (matches[current_day], j))
+                print('No GLM .nc files could be downloaded for day %s, event %d\n' % (matches[current_day], j))
             else:
 
                 min_lat = trigger_limits[j][0,0] - angle_margin
@@ -1532,9 +1532,9 @@ def extract_GLM(dir_path, output_path, trigger_limits, matches, MMIA_filtered, a
                 TFG.GLM_processing(dir_path+'/'+trigger_name+'/', output_path, trigger_name, min_lat, max_lat, min_lon, max_lon, start_time, end_time)
                 
                 print(' ')
-                print('Date %s snippet %d done\n' % (matches[current_day], j))
+                print('Date %s event %d done\n' % (matches[current_day], j))
         else:
-            print('GLM data for date %d snippet %d will not be extracted due to lack of MMIA data\n' % (int(matches[current_day]), j))
+            print('GLM data for date %d event %d will not be extracted due to lack of MMIA data\n' % (int(matches[current_day]), j))
 
     print('Your processed .txt files for day %s can be accessed at %s' % (matches[current_day], output_path))
     print(' ')
@@ -2545,3 +2545,13 @@ def split_MMIA_events(mmia_raw, event_limits, event_filenames_on_day, split_wind
         
     print('Done!\n')
     return [mmia_raw, event_limits, event_filenames_on_day]
+
+def phot_to_mat(mmia_raw, delays, current_day, save_path):
+
+    for j in range(len(mmia_raw)):
+        mmia_raw[j][:,0] = mmia_raw[j][:,0] + delays[j] * 0.00001
+    
+    mmia_raw = np.array(mmia_raw, dtype=object)
+    delays_t = np.array(delays) * 0.00001
+    vars_to_save = {"mmia_corrected":mmia_raw, "delays_t":delays_t}
+    sio.savemat(save_path + '/' + current_day + '.mat', vars_to_save)

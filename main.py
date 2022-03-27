@@ -7,6 +7,7 @@ import os
 #plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
 
 # TODO: Cambiar salida TCE a frecuencia GLM
+# TODO: Cambiar todo post-TCE a frecuencia GLM
 # TODO: Sacar los 3 fotómetros
 
 
@@ -29,10 +30,10 @@ show_plots = False
 pre_xc = False
 
 # Boolean variable for pre-converted to top cloud energy
-pre_tce = False
+pre_tce = True
 
 # Boolean variable for pre-detected peaks
-pre_detected_peaks = False
+pre_detected_peaks = True
 
 # Boolean variable for pre-studied peaks
 pre_studied = True
@@ -45,13 +46,13 @@ pre_event_directories = True
 
 # Path to Hard Disk (with all MMIA files and where to store all files)
 #ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
-ssd_path = '/Users/jaimemorandominguez/Desktop/special_tests/van_der_velde_results'
+ssd_path = '/Users/jaimemorandominguez/Desktop/special_tests/6071_results'
 #ssd_path = '/home/lrg/Desktop/TCEpreXCORR'
 #ssd_path = '/home/lrg/Desktop/USA'
 
 # Path where MMIA's .cdf files are located
 #MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
-MMIA_files_path = '/Users/jaimemorandominguez/Desktop/special_tests/van_der_velde/mmia_cdf'
+MMIA_files_path = '/Users/jaimemorandominguez/Desktop/special_tests/6071'
 #MMIA_files_path = '/media/lrg/colombia_2020/mmia_20'
 #MMIA_files_path = '/media/lrg/mmia_triggers_usa'
 
@@ -77,10 +78,10 @@ angle_margin = GLM_radius / 111.11 # or a given value in degrees
 pre_downloaded_GLM = True
 
 # Boolean variable for pre-extracted files
-pre_extracted_GLM = False
+pre_extracted_GLM = True
 
 # Boolean variable for integrating GLM signals if not pre-done
-pre_conditioned_GLM = False
+pre_conditioned_GLM = True
 
 
 ### MMIA ###
@@ -89,7 +90,7 @@ pre_conditioned_GLM = False
 pre_extracted_MMIA = True
 
 # Boolean variable for conditioning MMIA data if not done before
-pre_conditioned_MMIA = True
+pre_conditioned_MMIA = False
 
 # Maximum length in seconds of each event
 event_length = 2 # [s]
@@ -128,6 +129,7 @@ MMIA_mats_path = ssd_path + '/mmia_mat'
 MMIA_filtered_bin = ssd_path + '/mmia_filt_bin'
 path_to_mmia_dirs = ssd_path + '/mmia_dirs'
 mmia_mats_files_path = ssd_path + '/mmia_mat'
+mmia_corrected_mats_path = ssd_path + '/mmia_corr_mats'
 
 
 
@@ -212,11 +214,12 @@ if just_results == False:
         if pre_conditioned_MMIA == False:
 
             # Splitting those signals where more than one event was found
+            
             [mmia_raw, event_limits, event_filenames[day]] = TFG.split_MMIA_events(mmia_raw, event_limits, event_filenames[day], split_window)
-
+            
             # Conditioning MMIA data for further analysis
             MMIA_filtered = TFG.condition_MMIA_data(mmia_raw, matches, show_plots, mmia_threshold, day)
-
+            
             # Saving MMIA filtered data into binary
             print('Saving MMIA conditioned data for day %s...' % matches[day])
             if day == 0:
@@ -231,7 +234,7 @@ if just_results == False:
             MMIA_filtered = pickle.load(f)
             f.close()
             print('Done!\n')
-        del mmia_raw
+        
 
 
         ########### GLM'S DATA DOWNLOAD, EXTRACTION, UPLOAD AND CONDITIONING ###########
@@ -303,7 +306,7 @@ if just_results == False:
             [glm_tce, mmia_tce] = pickle.load(f)
             f.close()
 
-        #del GLM_data
+        del GLM_data
         del MMIA_filtered
 
 
@@ -356,6 +359,7 @@ if just_results == False:
             if day == 0:
                 os.system('mkdir ' + xcorr_bin)
                 os.system('mkdir ' + statistics_bin)
+                os.system('mkdir ' + mmia_corrected_mats_path)
 
             # Saving correlated signals
             f = open(xcorr_bin + '/' + matches[day] + '_signals.pckl', 'wb')
@@ -388,14 +392,18 @@ if just_results == False:
             f = open(statistics_bin + '/' + matches[day] + '_mmia_std.pckl', 'wb')
             pickle.dump(MMIA_std, f)
             f.close()
+            
+            # Saving corrected MMIA signals (3 photometers) into .mat's
+            TFG.phot_to_mat(mmia_raw, delays, matches[day], mmia_corrected_mats_path)
 
             print('Done!\n')
 
-            del delays
+            #del delays
             del GLM_avg
             del MMIA_avg
             del GLM_std
             del MMIA_std
+            del mmia_raw
 
         else:
             print('GLM and MMIA data for day %s was pre-correlated. Uploading from %s/%s.pckl...\n' % (matches[day], xcorr_bin, matches[day]))
