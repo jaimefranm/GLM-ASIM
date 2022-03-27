@@ -354,7 +354,7 @@ def signal_delay(data1, data2, show_plots, day, snip):
             x[i] = (i - (len_x/2))
         if (len_x % 2) != 0: # Odd number
             x[i] = (i - (len_x/2 - 0.5))
-    show_plots = 0
+    
     if show_plots == 1:
         plt.subplot(2, 1, 1)
         plt.plot(data2[:,1],'-r', linewidth = 0.5)
@@ -364,6 +364,12 @@ def signal_delay(data1, data2, show_plots, day, snip):
         plt.xlabel('Vector samples')
         plt.legend(['MMIA signal', 'GLM signal'])
         plt.grid('on')
+        # Clear the current axes
+        plt.cla() 
+        # Clear the current figure
+        plt.clf() 
+        # Closes all the figure windows
+        plt.close('all')
 
         plt.subplot(2, 1, 2)
         plt.plot(x, xcorr_factors, '-b', linewidth = 0.5)
@@ -376,7 +382,6 @@ def signal_delay(data1, data2, show_plots, day, snip):
         plt.clf() 
         # Closes all the figure windows
         plt.close('all')
-    show_plots = 1
 
     max_factor_pos = np.where(xcorr_factors == max(xcorr_factors))[0][0]
 
@@ -1337,8 +1342,8 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
             
             delay = 100000  # Very high delay value in order to enter the while loop
             prev_min_delay = delay
-            delay_crop = 5000
-            max_viable_delay = 8000
+            delay_crop = 25 # In samples, or 0.05s at 0.002s in frequency
+            max_viable_delay = 40 # In samples, or 0.08s at 0.002s in frequency
             counter = 0
             max_it = 1000
             
@@ -1409,10 +1414,10 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
             for k in range(len(current_MMIA)):
                 if delay != 0: # There is delay
                     # Adjust Normalized vector
-                    MMIA_xc[k,0] = current_MMIA[k,0] + delay*0.00001
+                    MMIA_xc[k,0] = current_MMIA[k,0] + delay*0.002
                     MMIA_xc[k,1] = current_MMIA[k,1]
                     # Adjust original vector
-                    MMIA_snippets[j][k,0] = MMIA_snippets[j][k,0] + delay*0.00001
+                    MMIA_snippets[j][k,0] = MMIA_snippets[j][k,0] + delay*0.002
                 else: # delay==0 so no delay at all
                     MMIA_xc[k,:] = current_MMIA[k,:]
             del current_MMIA
