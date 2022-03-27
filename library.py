@@ -1584,7 +1584,7 @@ def get_GLM_MMIA_peaks(GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, m
             
         if type(GLM_xcorr[j]) == np.ndarray and type(MMIA_xcorr[j]) == np.ndarray:
             
-            print('Finding peaks in GLM and MMIA cross-correlated signals for date %s snippet %d / %d' % (matches[current_day], j, len(GLM_xcorr)))
+            print('Finding peaks in GLM and MMIA cross-correlated signals for date %s event %d / %d' % (matches[current_day], j, len(GLM_xcorr)))
             
             # Cropping in order to have the same time to compare
             
@@ -1593,7 +1593,7 @@ def get_GLM_MMIA_peaks(GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, m
             GLM_right_cond = GLM_xcorr[j][0,0]>=MMIA_xcorr[j][-1,0]
             
             if GLM_left_cond == True or GLM_right_cond == True:
-                print('Correlated snippets for date %s snippet %d do not overlap at all' % (matches[current_day], j))
+                print('Correlated events for date %s event %d do not overlap at all' % (matches[current_day], j))
             else:
             
                 # Finding the starting position
@@ -1671,7 +1671,7 @@ def get_GLM_MMIA_peaks(GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, m
 
                 # Calculating indexes of peaks in MMIA signal
                 MMIA_noise_level = np.percentile(MMIA_vector,90, axis=0)
-                MMIA_peak_vec, _ = find_peaks(MMIA_vector, rel_height = 100, height = MMIA_noise_level, prominence = 0.4, distance=400)
+                MMIA_peak_vec, _ = find_peaks(MMIA_vector, rel_height = 100, height = MMIA_noise_level, prominence = 0.4, distance=2)
                 
                 
                 # Deleting those triggers with only 2 or less peaks (no meaningful sense)
@@ -1680,7 +1680,7 @@ def get_GLM_MMIA_peaks(GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, m
                     GLM_peaks[j] = GLM_peak_vec
                     MMIA_peaks[j] = MMIA_peak_vec
                 else:
-                    print('GLM or MMIA vector for day %s trigger %d had less than 3 peaks, so no reliable results can be extracted' % (matches[current_day], j))
+                    print('GLM or MMIA vector for day %s event %d had less than 3 peaks, so no reliable results can be extracted' % (matches[current_day], j))
                 
                 
                 if show_plots == 1:
@@ -1690,9 +1690,9 @@ def get_GLM_MMIA_peaks(GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, m
                     figure_name = matches[current_day] + '_' + str(j)
                     plt.plot(GLM_vector, color = 'black', linewidth=0.5)
                     plt.plot(GLM_peak_vec, GLM_vector[GLM_peak_vec], "*", color='b')
-                    plt.title('GLM peaks on day %d, snippet %d' % (int(matches[current_day]), j))
+                    plt.title('GLM peaks on day %d, event %d' % (int(matches[current_day]), j))
                     plt.xlabel('Samples')
-                    plt.ylabel('Radiance [J]')
+                    plt.ylabel('Top Cloud Energy [J]')
                     plt.grid('on')
                     #plt.show()
                     plt.savefig(peaks_path + '/' + figure_name + '_glm.pdf')
@@ -1708,9 +1708,9 @@ def get_GLM_MMIA_peaks(GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, m
                     figure_name = matches[current_day] + '_' + str(j)
                     plt.plot(MMIA_vector, color = 'r', linewidth=0.5)
                     plt.plot(MMIA_peak_vec, MMIA_vector[MMIA_peak_vec], "*", color='b')
-                    plt.title('MMIA peaks on day %d, snippet %d' % (int(matches[current_day]), j))
+                    plt.title('MMIA peaks on day %d, event %d' % (int(matches[current_day]), j))
                     plt.xlabel('Samples')
-                    plt.ylabel(r'Irradiance $\left[\dfrac{\mu W}{m^2}\right]$')
+                    plt.ylabel('Top Cloud Energy [J]')
                     plt.grid('on')
                     #plt.show()
                     plt.savefig(peaks_path + '/' + figure_name + '_mmia.pdf')
@@ -1721,19 +1721,19 @@ def get_GLM_MMIA_peaks(GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, m
                     # Closes all the figure windows
                     plt.close('all')
                     
-                    GLM_vec = GLM_xcorr_norm[j][:,1]
-                    MMIA_vec = MMIA_xcorr_norm[j][:,1]
+                    #GLM_vec = GLM_xcorr_norm[j][:,1]
+                    #MMIA_vec = MMIA_xcorr_norm[j][:,1]
                     
                     # GLM and MMIA peaks
                     plt.figure()
                     figure_name = matches[current_day] + '_' + str(j)
-                    plt.plot(GLM_vec, color = 'black', linewidth=0.5)
-                    plt.plot(GLM_peak_vec, GLM_vec[GLM_peak_vec], "*", color='gold')
-                    plt.plot(MMIA_vec, color = 'r', linewidth=0.5)
-                    plt.plot(MMIA_peak_vec, MMIA_vec[MMIA_peak_vec], "*", color='b')
-                    plt.title('GLM (black-yellow) and MMIA (red-blue) peaks on day %d, snippet %d (normalized)' % (int(matches[current_day]), j))
+                    plt.plot(GLM_vector, color = 'black', linewidth=0.5)
+                    plt.plot(GLM_peak_vec, GLM_vector[GLM_peak_vec], "*", color='gold')
+                    plt.plot(MMIA_vector, color = 'r', linewidth=0.5)
+                    plt.plot(MMIA_peak_vec, MMIA_vector[MMIA_peak_vec], "*", color='b')
+                    plt.title('GLM (black-yellow) and MMIA (red-blue) peaks on day %d, event %d' % (int(matches[current_day]), j))
                     plt.xlabel('Samples')
-                    plt.ylabel('Normalized Energy')
+                    plt.ylabel('Top Cloud Energy [J]')
                     plt.grid('on')
                     #plt.show()
                     plt.savefig(peaks_path + '/' + figure_name + '_both.pdf')
@@ -1745,7 +1745,7 @@ def get_GLM_MMIA_peaks(GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, m
                     plt.close('all')
 
         else:
-            print('Date %s snippet %d was not cross correlated' % (matches[current_day], j))
+            print('Date %s event %d was not cross correlated' % (matches[current_day], j))
     
     print(' ')            
     print('Done!')
