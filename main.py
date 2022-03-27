@@ -9,6 +9,7 @@ import os
 # TODO: Cambiar salida TCE a frecuencia GLM
 # TODO: Cambiar todo post-TCE a frecuencia GLM
 # TODO: Sacar los 3 fotómetros
+# TODO: Sacar GLM junto a MMIA (ambos en TCE mucho mejor)
 
 
 '''
@@ -112,10 +113,11 @@ mmia_threshold = 1.75   # [micro W / m^2]
 # New directories paths needed in the future
 
 general_variables_path = ssd_path + '/general_variables_bin'
-xcorr_bin = ssd_path + '/xcorr_bin'
-xcorr_figures_path = ssd_path + '/xcorr_figures'
 tce_bin = ssd_path + '/tce_bin'
 tce_figures_path = ssd_path + '/tce_figures'
+xcorr_bin = ssd_path + '/xcorr_bin'
+xcorr_figures_path = ssd_path + '/xcorr_figures'
+mats_output_path = ssd_path + '/output_mats'
 peaks_bin = ssd_path + '/peaks_bin'
 peaks_figures_path = ssd_path + '/peaks_figures'
 statistics_bin = ssd_path + '/stats_bin'
@@ -129,7 +131,6 @@ MMIA_mats_path = ssd_path + '/mmia_mat'
 MMIA_filtered_bin = ssd_path + '/mmia_filt_bin'
 path_to_mmia_dirs = ssd_path + '/mmia_dirs'
 mmia_mats_files_path = ssd_path + '/mmia_mat'
-mmia_corrected_mats_path = ssd_path + '/mmia_corr_mats'
 
 
 
@@ -359,7 +360,7 @@ if just_results == False:
             if day == 0:
                 os.system('mkdir ' + xcorr_bin)
                 os.system('mkdir ' + statistics_bin)
-                os.system('mkdir ' + mmia_corrected_mats_path)
+                os.system('mkdir ' + mats_output_path)
 
             # Saving correlated signals
             f = open(xcorr_bin + '/' + matches[day] + '_signals.pckl', 'wb')
@@ -393,12 +394,15 @@ if just_results == False:
             pickle.dump(MMIA_std, f)
             f.close()
             
-            # Saving corrected MMIA signals (3 photometers) into .mat's
-            TFG.phot_to_mat(mmia_raw, delays, matches[day], mmia_corrected_mats_path)
-
+            # Saving into .mat's:
+                # Corrected MMIA signals (3 photometers)
+                # Correlated TCE-converted GLM
+                # Correlated TCE-converted MMIA 777
+            TFG.data_to_mat(mmia_raw, GLM_xcorr, MMIA_xcorr, delays, matches[day], mats_output_path)
+            
             print('Done!\n')
 
-            #del delays
+            del delays
             del GLM_avg
             del MMIA_avg
             del GLM_std

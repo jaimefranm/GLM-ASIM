@@ -2546,12 +2546,16 @@ def split_MMIA_events(mmia_raw, event_limits, event_filenames_on_day, split_wind
     print('Done!\n')
     return [mmia_raw, event_limits, event_filenames_on_day]
 
-def phot_to_mat(mmia_raw, delays, current_day, save_path):
-
+def data_to_mat(mmia_raw, GLM_xcorr, MMIA_xcorr, delays, current_day, save_path):
+    
+    # Correct MMIA time on original signals
     for j in range(len(mmia_raw)):
         mmia_raw[j][:,0] = mmia_raw[j][:,0] + delays[j] * 0.00001
     
+    # Convert variables to final expected output
     mmia_raw = np.array(mmia_raw, dtype=object)
     delays_t = np.array(delays) * 0.00001
-    vars_to_save = {"mmia_corrected":mmia_raw, "delays_t":delays_t}
+    
+    # Save variables into a .mat
+    vars_to_save = {"corr_mmia_all":mmia_raw, "GLM_xcorr":np.array(GLM_xcorr, dtype=object), "MMIA_xcorr":np.array(MMIA_xcorr, dtype=object), "delays_t":delays_t}
     sio.savemat(save_path + '/' + current_day + '.mat', vars_to_save)
