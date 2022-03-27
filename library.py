@@ -812,7 +812,7 @@ def GLM_processing(read_path, save_path, name, min_lat, max_lat, min_lon, max_lo
 
     df_export.to_csv(save_path+'/'+name+'.txt', sep=' ', index=False,header=False)
 
-def unify_GLM_data(output_path, MMIA_filtered, matches, current_day):
+def unify_GLM_data(output_path, MMIA_filtered, matches, current_day, cropping_margin):
     '''
     This function gets all the GLM's extracted data .txt files from the
     directory output_path and creates and returns list GLM_raw_data.
@@ -823,8 +823,8 @@ def unify_GLM_data(output_path, MMIA_filtered, matches, current_day):
         Path to the existing directory where the resulting daily .txt files
         are located.
     MMIA_filtered : list
-        List of daily lists of MMIA's time and signal (with a moving average
-        applied) vectors for every snippet
+        List of daily lists of MMIA's time and signal (with a filter applied)
+        vectors for every event
     matches : list
         List of dates with existing GLM and MMIA files
     show_plots : bool
@@ -838,7 +838,7 @@ def unify_GLM_data(output_path, MMIA_filtered, matches, current_day):
     '''
 
     print('Uploading GLM data from .txt files...')
-    # Creation of a new list of daily GLM snippets
+    # Creation of a new list of daily GLM events
     GLM_raw_data = [None] * len(MMIA_filtered)
 
     with os.scandir(output_path) as files:
@@ -849,18 +849,18 @@ def unify_GLM_data(output_path, MMIA_filtered, matches, current_day):
 
     column_subset = ['Time', 'Event_lat', 'Event_lon', 'Event_ID', 'Flash_lat', 'Flash_lon', 'Event_radiance', 'Flash_radiance']
 
-    for i in range(size):
+    for i in range(size): # For every .txt file (for every event)
 
         day = files[i][0:8]
         
         if day == matches[current_day]:
             
             if len(files[i]) == 14: # Trigger number is 1 digit
-                snip = int(files[i][9:10])
+                event = int(files[i][9:10])
             elif len(files[i]) == 15:   # Trigger number is 2 digits
-                snip = int(files[i][9:11])
+                event = int(files[i][9:11])
             elif len(files[i]) == 16:   # Trigger number is 3 digits (not expected)
-                snip = int(files[i][9:12])
+                event = int(files[i][9:12])
 
             current_path = output_path + '/' + files[i]
 
@@ -871,8 +871,13 @@ def unify_GLM_data(output_path, MMIA_filtered, matches, current_day):
             current_data = current_data.sort_values(by='Time')
             # Translating Pandas Dataframe to Numpy Matrix for easy data access
             current_data = current_data.to_numpy()
+            # Cropping current_data to +-cropping_margin with respect to MMIA
+            first_index = np.where(current_data[:,0] >= MMIA_filtered[i][0,0]-cropping_margin)[0][0]
+            last_index = np.where(current_data[:,0] <= MMIA_filtered[i][-1,0]+cropping_margin)[0][-1]
+            print([first_index, last_index])
+            current_data = current_data[first_index:last_index,:]
             # Appending current day to GLM_raw_data
-            GLM_raw_data[snip] = current_data
+            GLM_raw_data[event] = current_data
             # Freeing memory
             del current_data
 

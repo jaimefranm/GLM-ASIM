@@ -22,7 +22,7 @@ import os
 ### GENERAL ###
 
 # Boolean variable for setting everything for the first execution
-first_execution = False
+first_execution = True
 
 # Boolean variable for generating plots
 show_plots = False
@@ -256,7 +256,7 @@ if just_results == False:
         if pre_conditioned_GLM == False:
             
             # Unifying all data in a structure of matrices
-            GLM_raw_data = TFG.unify_GLM_data(GLM_ordered_outputs, MMIA_filtered, matches, day)
+            GLM_raw_data = TFG.unify_GLM_data(GLM_ordered_outputs, MMIA_filtered, matches, day, cropping_margin)
 
             # Conditioning GLM data for further analysis
             GLM_data = TFG.condition_GLM_data(GLM_raw_data, matches, show_plots, day)
