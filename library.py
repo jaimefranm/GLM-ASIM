@@ -1881,7 +1881,7 @@ def get_peak_matches(GLM_xcorr, GLM_xcorr_norm, MMIA_xcorr, MMIA_xcorr_norm, GLM
                 # Closes all the figure windows
                 plt.close('all')
                 
-                plt.figure()
+                plt.figure(figsize=(12, 4))
                 plt.plot(MMIA_xcorr[j][:,1], color = 'r', linewidth=0.5)
                 plt.plot(MMIA_peaks[j], MMIA_xcorr[j][MMIA_peaks[j],1], "*", color='lime')
                 plt.plot(MMIA_peaks[j][matching_MMIA_peaks_pos_pos], MMIA_xcorr[j][MMIA_peaks[j][matching_MMIA_peaks_pos_pos],1], "*", color='gold')
