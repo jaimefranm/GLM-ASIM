@@ -8,8 +8,6 @@ import os
 
 # TODO: Cambiar salida TCE a frecuencia GLM
 # TODO: Cambiar todo post-TCE a frecuencia GLM
-# TODO: Sacar los 3 fotómetros
-# TODO: Sacar GLM junto a MMIA (ambos en TCE mucho mejor)
 
 
 '''
