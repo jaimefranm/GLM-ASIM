@@ -2036,7 +2036,7 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         for j in range(len(delays[i])):
             if type(delays[i][j]) == int:
                 
-                delays_s_vec.append(delays[i][j]*0.00001)
+                delays_s_vec.append(delays[i][j]*0.002)
                 
                 if delays[i][j] > 0: # MMIA signal anticipates
                     GLM_delay_signal[GLM_counter,0] = delays[i][j] # Delay for that snippet
@@ -2067,11 +2067,11 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
     f.write('* DELAY INFO:')
     f.write('\n')
     f.write('    --> Average delay in samples (accounting for positive and negative values): %s +- %s\n' % (str(format(avg_all, '.3f')), str(format(std_all, '.3f'))))
-    f.write('    --> Average delay in seconds (accounting for positive and negative values): %s +- %s\n' % (str(format(avg_all*0.00001, '.3f')), str(format(std_all*0.00001, '.3f'))))
+    f.write('    --> Average delay in seconds (accounting for positive and negative values): %s +- %s\n' % (str(format(avg_all*0.002, '.3f')), str(format(std_all*0.002, '.3f'))))
     f.write('    --> Number of MMIA delays: %d (%s%% over valid events)\n' % (len(MMIA_delays), str(format(len(MMIA_delays)/valid_triggers*100, '.3f'))))
     if 'avg_negative' in locals():
         f.write('       --> Average MMIA delay in samples: %s +- %s\n' % (str(format(avg_negative, '.3f')), str(format(std_negative, '.3f'))))
-        f.write('       --> Average MMIA delay in seconds: %s +- %s\n' % (str(format(avg_negative*0.00001, '.3f')), str(format(std_negative*0.00001, '.3f'))))
+        f.write('       --> Average MMIA delay in seconds: %s +- %s\n' % (str(format(avg_negative*0.002, '.3f')), str(format(std_negative*0.002, '.3f'))))
     else:
         f.write('       --> Average MMIA delay in samples: -\n')
         f.write('       --> Average MMIA delay in seconds: -\n')
@@ -2079,7 +2079,7 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
     f.write('    --> Number of MMIA anticipations: %d (%s%% over valid events)\n' % (len(GLM_delays), str(format(len(GLM_delays)/valid_triggers*100, '.3f'))))
     if 'avg_positive' in locals():
         f.write('       --> Average MMIA anticipation in samples: %s +- %s\n' % (str(format(avg_positive, '.3f')), str(format(std_positive, '.3f'))))
-        f.write('       --> Average MMIA anticipation in seconds: %s +- %s\n' % (str(format(avg_positive*0.00001, '.3f')), str(format(std_positive*0.00001, '.3f'))))
+        f.write('       --> Average MMIA anticipation in seconds: %s +- %s\n' % (str(format(avg_positive*0.002, '.3f')), str(format(std_positive*0.002, '.3f'))))
     else:
         f.write('       --> Average MMIA anticipation in samples: -\n')
         f.write('       --> Average MMIA anticipation in seconds: -\n')
@@ -2125,11 +2125,11 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
             fig = plt.figure(dpi=800)
             ax = fig.add_axes([0,0,1,1])
             langs = ['Avg. Delay', 'Avg. MMIA Delay', 'Avg. MMIA Anticipation']
-            data = [avg_all*0.00001, avg_negative*0.00001, avg_positive*0.00001]
+            data = [avg_all*0.002, avg_negative*0.002, avg_positive*0.002]
             plt.grid('on')
             colors = ['tab:blue', 'darksalmon', 'slategrey']
             ax.set_ylabel('Delay [s]')
-            ax.bar(langs,data, color=colors, yerr=[std_all*0.00001,std_negative*0.00001,std_positive*0.00001])
+            ax.bar(langs,data, color=colors, yerr=[std_all*0.002,std_negative*0.002,std_positive*0.002])
             #plt.show()
             plt.savefig(statistics_figures_path + '/avg_delays.pdf')
             # Clear the current axes
@@ -2141,8 +2141,8 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         
         # GLM delay vs GLM avg energy
         plt.figure()
-        plt.scatter(GLM_delay_signal[:,1]*0.00001, GLM_delay_signal[:,0]*0.00001, color='black', marker='x')
-        plt.xlabel('GLM trigger average radiance [J]')
+        plt.scatter(GLM_delay_signal[:,1]*0.002, GLM_delay_signal[:,0]*0.002, color='black', marker='x')
+        plt.xlabel('GLM event average energy [J]')
         plt.ylabel('Trigger delay [s]')
         plt.grid('on')
         #plt.show()
@@ -2156,8 +2156,8 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         
         # MMIA delay vs MMIA avg energy
         plt.figure()
-        plt.scatter(MMIA_delay_signal[:,1]*0.00001, MMIA_delay_signal[:,0]*0.00001, color='r', marker='x')
-        plt.xlabel(r'MMIA trigger average irradiance $\left[\dfrac{\mu W}{m^2}\right]$')
+        plt.scatter(MMIA_delay_signal[:,1]*0.002, MMIA_delay_signal[:,0]*0.002, color='r', marker='x')
+        plt.xlabel('MMIA event average energy [J]')
         plt.ylabel('Trigger delay [s]')
         plt.grid('on')
         #plt.show()
@@ -2171,8 +2171,8 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         
         # GLM delay vs GLM std deviation in energy
         plt.figure()
-        plt.scatter(GLM_delay_signal[:,2]*0.00001, GLM_delay_signal[:,0]*0.00001, color='black', marker='x')
-        plt.xlabel("GLM snippet's radiance stantard deviation [J]")
+        plt.scatter(GLM_delay_signal[:,2]*0.002, GLM_delay_signal[:,0]*0.002, color='black', marker='x')
+        plt.xlabel("GLM event's energy stantard deviation [J]")
         plt.ylabel('Trigger delay [s]')
         plt.grid('on')
         #plt.show()
@@ -2186,8 +2186,8 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         
         # MMIA delay vs MMIA std deviation in energy
         plt.figure()
-        plt.scatter(MMIA_delay_signal[:,2]*0.00001, MMIA_delay_signal[:,0]*0.00001, color='r', marker='x')
-        plt.xlabel(r"MMIA trigger's irradiance stantard deviation $\left[\dfrac{\mu W}{m^2}\right]$")
+        plt.scatter(MMIA_delay_signal[:,2]*0.002, MMIA_delay_signal[:,0]*0.002, color='r', marker='x')
+        plt.xlabel(r"MMIA event's energy stantard deviation [J]")
         plt.ylabel('Trigger delay [s]')
         plt.grid('on')
         #plt.show()
@@ -2201,15 +2201,8 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         
         # Delays histogram for all delays
         
-        # Sturges rule
-        R = max(delays_s_vec) - min(delays_s_vec)   # Range
-        bins_num = 1 + math.log(R,2)                # Sturges rule
-        bins_num = math.ceil(bins_num)              # Approximation
-        if bins_num%2 != 0:
-            bins_num = bins_num - 1
-        bins_num = 50
         plt.figure()
-        plt.hist(delays_s_vec, bins = bins_num, rwidth=0.85)
+        plt.hist(delays_s_vec, bins = 50, rwidth=0.85)
         plt.title('All Delay Histogram')
         plt.xlabel('Delay [s]')
         plt.ylabel('Frequency')
