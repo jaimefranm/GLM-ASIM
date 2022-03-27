@@ -957,9 +957,7 @@ def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
                 # Closes all the figure windows
                 plt.close('all')
 
-            # Integration
-            # GLM_int_data = integrate_signal_002(GLM_total_raw_data[j], True)
-            # GLM_data[j] = fit_vector_in_MMIA_timesteps(GLM_int_data, int(matches[current_day]), j, show_plots, 0)
+
             GLM_data[j] = GLM_total_raw_data[j][:,[0,6]] # Time and instrument signal for event radiance
             
             # Check for too short snippet vectors
@@ -1224,7 +1222,7 @@ def condition_MMIA_data(MMIA_data, matches, show_plots, mmia_threshold, current_
                 
             else:
 
-                # Assuring continuity in MMIA_MA timesteps
+                # Assuring continuity in MMIA_filtered timesteps
                 MMIA_filtered[j] = TFG.fit_vector_in_MMIA_timesteps(current_data, int(matches[current_day]), j, show_plots, True)
                 
                 if show_plots == 1:
@@ -2435,9 +2433,7 @@ def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figur
             # GLM
             GLM_cloud_E = GLM_data[i]
             GLM_cloud_E[:,1] = GLM_data[i][:,1] * 6611570247.933885 * glm_pix_size*1e6 #[J]
-            int_glm_tce = integrate_signal_002(GLM_cloud_E, True)
-            glm_tce[i] = fit_vector_in_MMIA_timesteps(int_glm_tce, int(current_day), i, False, False)
-            del int_glm_tce
+            glm_tce[i] = integrate_signal_002(GLM_cloud_E, True)
             del GLM_cloud_E
 
 
@@ -2445,7 +2441,7 @@ def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figur
             # Computing the integral over MMIA signal
             MMIA_cloud_E = integrate_signal_002(MMIA_filtered[i],False) # [micro J/m^2]
             MMIA_cloud_E[:,1] = MMIA_cloud_E[:,1]*1e-6*(math.pi)*(400e3**2) #(Van der Velde et al 2020), [J]
-            mmia_tce[i] = fit_vector_in_MMIA_timesteps(MMIA_cloud_E, int(current_day), i, False, True)
+            mmia_tce[i] = MMIA_cloud_E
             del MMIA_cloud_E
 
             if show_plots == True:
