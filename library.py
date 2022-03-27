@@ -1759,7 +1759,7 @@ def get_peak_matches(GLM_xcorr, GLM_xcorr_norm, MMIA_xcorr, MMIA_xcorr_norm, GLM
     
     common_peaks = [None] * len(GLM_xcorr)
     
-    for j in range(len(GLM_xcorr)): # For every trigger in current day
+    for j in range(len(GLM_xcorr)): # For every event in current day
             
         # If data was successfully correlated and with 3 or more peaks (condition imposed before)
         if type(GLM_peaks[j]) == np.ndarray and type(MMIA_peaks[j]) == np.ndarray:
@@ -1800,10 +1800,10 @@ def get_peak_matches(GLM_xcorr, GLM_xcorr_norm, MMIA_xcorr, MMIA_xcorr_norm, GLM
                 # Starting at the maximum peak
                 current_peak_pos = GLM_peaks[j][max_pos]
                 
-                window = np.linspace(current_peak_pos-200,current_peak_pos+200, 401, dtype=int) # Searching in a window of 400 samples
+                window = np.linspace(current_peak_pos-1,current_peak_pos+1, 3, dtype=int) # Searching in a window of 3 samples
                 # Precision of +- 0.002s --> 0.004s window
-                # 0.004 [s] / 0.00001 [s/sample] = 400 [samples window]
-                # 400 samples window --> ** +-200 samples **
+                # 0.004 [s] / 0.002 [s/sample] = 2 [samples window]
+                # 2 samples window --> ** +-1 samples **
                 
                 
                 # Check if any value of the window exists in MMIA_peaks[j]
@@ -1853,7 +1853,7 @@ def get_peak_matches(GLM_xcorr, GLM_xcorr_norm, MMIA_xcorr, MMIA_xcorr_norm, GLM
                 plt.plot(GLM_peaks[j][matching_GLM_peaks_pos_pos], GLM_xcorr[j][GLM_peaks[j][matching_GLM_peaks_pos_pos],1], "*", color='gold')
                 plt.title('GLM peaks on day %s, event %d' % (matches[current_day], j))
                 plt.xlabel('Samples')
-                plt.ylabel('Radiance [J]')
+                plt.ylabel('Top Cloud Energy [J]')
                 plt.grid('on')
                 #plt.show()
                 plt.savefig(match_figs_path + '/' + figure_name + '_GLM_match.pdf')
@@ -1870,7 +1870,7 @@ def get_peak_matches(GLM_xcorr, GLM_xcorr_norm, MMIA_xcorr, MMIA_xcorr_norm, GLM
                 plt.plot(MMIA_peaks[j][matching_MMIA_peaks_pos_pos], MMIA_xcorr[j][MMIA_peaks[j][matching_MMIA_peaks_pos_pos],1], "*", color='gold')
                 plt.title('MMIA peaks on day %s, event %d' % (matches[current_day], j))
                 plt.xlabel('Samples')
-                plt.ylabel(r"Irradiance $\left[\dfrac{\mu W}{m^2}\right]$")
+                plt.ylabel('Top Cloud Energy [J]')
                 plt.grid('on')
                 #plt.show()
                 plt.savefig(match_figs_path + '/' + figure_name + '_MMIA_match.pdf')
@@ -1882,15 +1882,15 @@ def get_peak_matches(GLM_xcorr, GLM_xcorr_norm, MMIA_xcorr, MMIA_xcorr_norm, GLM
                 plt.close('all')
                 
                 plt.figure()
-                plt.plot(MMIA_xcorr_norm[j][:,1], color = 'r', linewidth=0.5)
-                plt.plot(MMIA_peaks[j], MMIA_xcorr_norm[j][MMIA_peaks[j],1], "*", color='lime')
-                plt.plot(MMIA_peaks[j][matching_MMIA_peaks_pos_pos], MMIA_xcorr_norm[j][MMIA_peaks[j][matching_MMIA_peaks_pos_pos],1], "*", color='gold')
-                plt.plot(GLM_xcorr_norm[j][:,1], color = 'black', linewidth=0.5)
-                plt.plot(GLM_peaks[j], GLM_xcorr_norm[j][GLM_peaks[j],1], "*", color='b')
-                plt.plot(GLM_peaks[j][matching_GLM_peaks_pos_pos], GLM_xcorr_norm[j][GLM_peaks[j][matching_GLM_peaks_pos_pos],1], "*", color='darkorange')
+                plt.plot(MMIA_xcorr[j][:,1], color = 'r', linewidth=0.5)
+                plt.plot(MMIA_peaks[j], MMIA_xcorr[j][MMIA_peaks[j],1], "*", color='lime')
+                plt.plot(MMIA_peaks[j][matching_MMIA_peaks_pos_pos], MMIA_xcorr[j][MMIA_peaks[j][matching_MMIA_peaks_pos_pos],1], "*", color='gold')
+                plt.plot(GLM_xcorr[j][:,1], color = 'black', linewidth=0.5)
+                plt.plot(GLM_peaks[j], GLM_xcorr[j][GLM_peaks[j],1], "*", color='b')
+                plt.plot(GLM_peaks[j][matching_GLM_peaks_pos_pos], GLM_xcorr[j][GLM_peaks[j][matching_GLM_peaks_pos_pos],1], "*", color='darkorange')
                 plt.title('GLM (black) and MMIA (red) peaks and common peaks on day %s, event %d' % (matches[current_day], j))
                 plt.xlabel('Samples')
-                plt.ylabel("Normalized Energy")
+                plt.ylabel('Top Cloud Energy [J]')
                 plt.legend(['MMIA corr norm signal', 'MMIA peaks', 'MMIA matching peaks', 'GLM corr norm signal', 'GLM peaks', 'GLM matching peaks'])
                 plt.grid('on')
                 #plt.show()
