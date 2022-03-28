@@ -6,8 +6,8 @@ import os
 # Just for plot presentation in LaTeX Style (slows the program)
 #plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
 
-# TODO: Cambiar salida TCE a frecuencia GLM
-# TODO: Cambiar todo post-TCE a frecuencia GLM
+# TODO: Sacar min peak number como variable global
+# TODO: Imponer max y min t en la integral
 
 
 '''
@@ -46,13 +46,13 @@ pre_event_directories = True
 # Path to Hard Disk (with all MMIA files and where to store all files)
 #ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
 ssd_path = '/Users/jaimemorandominguez/Desktop/special_tests/6071_results'
-#ssd_path = '/home/lrg/Desktop/TCEpreXCORR'
+#ssd_path = '/home/lrg/Desktop/jesus_cases/mmia_cdf/Colombia'
 #ssd_path = '/home/lrg/Desktop/USA'
 
 # Path where MMIA's .cdf files are located
 #MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
 MMIA_files_path = '/Users/jaimemorandominguez/Desktop/special_tests/6071'
-#MMIA_files_path = '/media/lrg/colombia_2020/mmia_20'
+#MMIA_files_path = '/home/lrg/Desktop/jesus_cases/mmia_cdf/Colombia/interesting_2019'
 #MMIA_files_path = '/media/lrg/mmia_triggers_usa'
 
 # Path to MATLAB executable

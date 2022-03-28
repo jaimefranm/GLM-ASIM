@@ -803,8 +803,9 @@ def GLM_processing(read_path, save_path, name, min_lat, max_lat, min_lon, max_lo
             # Elimino la columna del event_parent_group_id
             df_glm.drop("event_pgid", axis=1, inplace=True)
             
-            df_glm_in = df_glm[(df_glm['event_lat'] >= min_lat) & (df_glm['event_lat'] <= max_lat) &
-                            (df_glm['event_lon'] >= min_lon) & (df_glm['event_lon'] <= max_lon) ]
+            df_glm_in = df_glm[(df_glm['seconds_day'] >= begin) & (df_glm['seconds_day'] <= end) &
+                               (df_glm['event_lat'] >= min_lat) & (df_glm['event_lat'] <= max_lat) &
+                               (df_glm['event_lon'] >= min_lon) & (df_glm['event_lon'] <= max_lon)]
             
             if ind==0:
                 
@@ -877,10 +878,10 @@ def unify_GLM_data(output_path, MMIA_filtered, matches, current_day, cropping_ma
             # Translating Pandas Dataframe to Numpy Matrix for easy data access
             current_data = current_data.to_numpy()
             # Cropping current_data to +-cropping_margin with respect to MMIA
-            first_index = np.where(current_data[:,0] >= MMIA_filtered[i][0,0]-cropping_margin)[0][0]
-            last_index = np.where(current_data[:,0] <= MMIA_filtered[i][-1,0]+cropping_margin)[0][-1]
-            print([first_index, last_index])
-            current_data = current_data[first_index:last_index,:]
+            #if type(MMIA_filtered[i]) == np.ndarray and len(current_data) >= 2:
+             #   first_index = np.where(current_data[:,0] >= MMIA_filtered[i][0,0]-cropping_margin)[0][0]
+              #  last_index = np.where(current_data[:,0] <= MMIA_filtered[i][-1,0]+cropping_margin)[0][-1]
+               # current_data = current_data[first_index:last_index,:]
             # Appending current day to GLM_raw_data
             GLM_raw_data[event] = current_data
             # Freeing memory
@@ -1533,6 +1534,8 @@ def extract_GLM(dir_path, output_path, trigger_limits, matches, MMIA_filtered, a
 
                 start_time = MMIA_filtered[j][0,0] - cropping_margin
                 end_time = MMIA_filtered[j][-1,0] + cropping_margin
+                print(MMIA_filtered[j][0,0])
+                print(MMIA_filtered[j][-1,0])
 
                 #start_time = trigger_limits[j][0,4] - cropping_margin
                 #end_time = trigger_limits[j][0,5] + cropping_margin
@@ -2415,7 +2418,6 @@ def integrate_signal_002(event, isGLM):
                     window_positions = np.linspace(pos_0,len(event)-1,len(event)-pos_0,dtype=int)
                     int_data[k,1] = np.trapz(event[window_positions,1], x=event[window_positions,0])
                 
-    print('Done!')
     return int_data
 
 def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figures_path, glm_pix_size):
@@ -2549,11 +2551,11 @@ def data_to_mat(mmia_raw, GLM_xcorr, MMIA_xcorr, delays, current_day, save_path)
     
     # Correct MMIA time on original signals
     for j in range(len(mmia_raw)):
-        mmia_raw[j][:,0] = mmia_raw[j][:,0] + delays[j] * 0.00001
+        mmia_raw[j][:,0] = mmia_raw[j][:,0] + delays[j] * 0.002
     
     # Convert variables to final expected output
     mmia_raw = np.array(mmia_raw, dtype=object)
-    delays_t = np.array(delays) * 0.00001
+    delays_t = np.array(delays) * 0.002
     
     # Save variables into a .mat
     vars_to_save = {"corr_mmia_all":mmia_raw, "GLM_xcorr":np.array(GLM_xcorr, dtype=object), "MMIA_xcorr":np.array(MMIA_xcorr, dtype=object), "delays_t":delays_t}
