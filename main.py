@@ -73,6 +73,9 @@ glm_pix_size = 8*8  # Colombia
 GLM_radius = 400 # [km]
 angle_margin = GLM_radius / 111.11 # or a given value in degrees
 
+# Minumum number of peaks to consider a valid event for GLM
+glm_min_peak_num = 3
+
 # Boolean variable for downloading GLM .nc files from Google Cloud Storage
 pre_downloaded_GLM = True
 
@@ -99,6 +102,9 @@ split_window = 2000*0.00001
 
 # Threshold for MMIA signal
 mmia_threshold = 1.75   # [micro W / m^2]
+
+# Minumum number of peaks to consider a valid event for MMIA
+mmia_min_peak_num = 3
 
 
 '''

@@ -877,11 +877,6 @@ def unify_GLM_data(output_path, MMIA_filtered, matches, current_day, cropping_ma
             current_data = current_data.sort_values(by='Time')
             # Translating Pandas Dataframe to Numpy Matrix for easy data access
             current_data = current_data.to_numpy()
-            # Cropping current_data to +-cropping_margin with respect to MMIA
-            #if type(MMIA_filtered[i]) == np.ndarray and len(current_data) >= 2:
-             #   first_index = np.where(current_data[:,0] >= MMIA_filtered[i][0,0]-cropping_margin)[0][0]
-              #  last_index = np.where(current_data[:,0] <= MMIA_filtered[i][-1,0]+cropping_margin)[0][-1]
-               # current_data = current_data[first_index:last_index,:]
             # Appending current day to GLM_raw_data
             GLM_raw_data[event] = current_data
             # Freeing memory
