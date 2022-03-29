@@ -437,7 +437,7 @@ if just_results == False:
 
             # Getting peaks from cross-correlated signals
             show_plots = True
-            [GLM_peaks, MMIA_peaks] = TFG.get_GLM_MMIA_peaks(GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, matches, show_plots, day, peaks_path)
+            [GLM_peaks, MMIA_peaks] = TFG.get_GLM_MMIA_peaks(GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, matches, show_plots, day, peaks_path, glm_min_peak_num, mmia_min_peak_num)
 
 
             # Getting matching peaks

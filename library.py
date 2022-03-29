@@ -1545,7 +1545,7 @@ def extract_GLM(dir_path, output_path, trigger_limits, matches, MMIA_filtered, a
     print('Your processed .txt files for day %s can be accessed at %s' % (matches[current_day], output_path))
     print(' ')
 
-def get_GLM_MMIA_peaks(GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, matches, show_plots, current_day, peaks_path):
+def get_GLM_MMIA_peaks(GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, matches, show_plots, current_day, peaks_path, glm_min_peak_num, mmia_min_peak_num):
     '''
     This function gets the cross-correlated vector snippets from GLM and MMIA
     and finds their indexes for every prominent peak in their signals.
@@ -1674,11 +1674,11 @@ def get_GLM_MMIA_peaks(GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, m
                 
                 # Deleting those triggers with only 2 or less peaks (no meaningful sense)
                     # and assigning values
-                if len(GLM_peak_vec) > 2 and len(MMIA_peak_vec) > 2:
+                if len(GLM_peak_vec) >= glm_min_peak_num and len(MMIA_peak_vec) >= mmia_min_peak_num:
                     GLM_peaks[j] = GLM_peak_vec
                     MMIA_peaks[j] = MMIA_peak_vec
                 else:
-                    print('GLM or MMIA vector for day %s event %d had less than 3 peaks, so no reliable results can be extracted' % (matches[current_day], j))
+                    print('GLM or MMIA vector for day %s event %d had less than minimum input peak number, so no reliable results can be extracted' % (matches[current_day], j))
                 
                 
                 if show_plots == 1:
