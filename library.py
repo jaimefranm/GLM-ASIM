@@ -1314,7 +1314,7 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
                 figure_name = matches[current_day] + '_' + str(j)
                 plt.figure(figsize=(12, 4))
                 plt.plot(current_MMIA[:,0], current_MMIA[:,1], color = 'r', linewidth = 0.5)
-                plt.plot(current_GLM[:,0], current_GLM[:,1], color = 'black', linewidth = 1)
+                plt.plot(current_GLM[:,0], current_GLM[:,1], color = 'black', linewidth = 0.5)
                 plt.legend(['MMIA','GLM'])
                 plt.title('GLM (black) and MMIA (red) non-correlated normalized signals for day %d event %d' % (int(matches[current_day]), j))
                 plt.xlabel('Time [s]')
@@ -1423,7 +1423,7 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
                 figure_name = matches[current_day] + '_' + str(j)
                 plt.figure(figsize=(12, 4))
                 plt.plot(MMIA_xc[:,0], MMIA_xc[:,1], color = 'r', linewidth = 0.5)
-                plt.plot(GLM_xc[:,0], GLM_xc[:,1], color = 'black', linewidth = 1)
+                plt.plot(GLM_xc[:,0], GLM_xc[:,1], color = 'black', linewidth = 0.5)
                 plt.legend(['MMIA','GLM'])
                 plt.title('GLM (black) and MMIA (red) correlated normalized signals for day %d event %d' % (int(matches[current_day]), j))
                 plt.xlabel('Time [s]')
@@ -2335,16 +2335,17 @@ def more_statistics(peaks_bin, matches, ssd_path):
     print('Done! Your final results can be accessed at ' + ssd_path + '/RESULTS.txt\n')
     print(' ')
 
-def integrate_signal_002(event, isGLM):
+def integrate_signal_002_old(event, isGLM, begin, end):
 
     if isGLM == True:
 
-        new_length = math.ceil((event[-1,0] - event[0,0]) / 0.002)
+        new_length = math.ceil((end - begin) / 0.002)
         int_data = np.zeros((new_length, 2))
+        int_data[:,1] = 1e-11
         pos_0 = 0
 
         for k in range(new_length): # For every sample accounting zeros at GLM rate
-            int_data[k,0] = round(event[0,0] + k*0.002, 3)
+            int_data[k,0] = round(begin + k*0.002, 3)
             t_min = int_data[k,0]
             t_max = t_min + 0.002
             inside = True
@@ -2371,20 +2372,20 @@ def integrate_signal_002(event, isGLM):
                 else:
                     inside = False
     
-    else: # isGLM is false
-        # Just integrate by adding values inside current window of 0.002s
+    else: # If isGLM is false
         
-        new_length = math.ceil((event[-1,0] - event[0,0]) / 0.002)
+        new_length = math.ceil((end - begin) / 0.002)
 
         # Current table of data (current day)
 
         int_data = np.zeros((new_length, 2))
+        int_data[:,1] = 1e-11
         
         pos_0 = 0
         for k in range(new_length): # For every sample accounting zeros at GLM rate
 
             # Fill time instance
-            int_data[k,0] = round(event[0,0] + k*0.002, 3)
+            int_data[k,0] = round(begin + k*0.002, 3)
             
             # Create windows of 0.002s and integrate their content
             t_min = int_data[k,0]
@@ -2395,7 +2396,7 @@ def integrate_signal_002(event, isGLM):
             while inside == True:
                 raw_pos = pos_0 + count
 
-                # Check if the next GLM_total_raw_data sample will be added
+                # Check if the next MMIA_filtered sample will be added
 
                 raw_end = (raw_pos == (len(event)-1))
 
@@ -2415,7 +2416,39 @@ def integrate_signal_002(event, isGLM):
                 
     return int_data
 
-def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figures_path, glm_pix_size):
+def integrate_signal_002(event, isGLM, begin, end):
+
+    new_length = math.ceil((end - begin) / 0.002)
+    int_data = np.zeros((new_length, 2))
+
+    for k in range(new_length): # For every sample accounting zeros at GLM rate
+        
+        # Fill time instance
+        int_data[k,0] = round(begin + k*0.002, 3)
+        
+        # Create windows of 0.002s and integrate their content
+        t_min = int_data[k,0]
+        t_max = t_min + 0.002
+        
+        # Check positions in the signal vector which are inside current window
+        window_indx = np.where(np.logical_and(event[:,0] >= t_min, event[:,0] < t_max))[0]
+        
+        if len(window_indx) == 0:
+            int_data[k,1] = 1e-11
+        
+        else: # Data inside this window exists
+            
+            if isGLM == True: # Event represents GLM signal
+                # Simply add values inside window
+                int_data[k,1] = sum(event[window_indx,1])
+                
+            else: # Event represents MMIA signal
+                # Trapezoid integration
+                int_data[k,1] = np.trapz(event[window_indx,1], x=event[window_indx,0])
+                
+    return int_data
+
+def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figures_path, glm_pix_size, cropping_margin):
     
     glm_tce = [None] * len(GLM_data)
     mmia_tce = [None] * len(MMIA_filtered)
@@ -2428,13 +2461,13 @@ def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figur
             # GLM
             GLM_cloud_E = GLM_data[i]
             GLM_cloud_E[:,1] = GLM_data[i][:,1] * 6611570247.933885 * glm_pix_size*1e6 #[J]
-            glm_tce[i] = integrate_signal_002(GLM_cloud_E, True)
+            glm_tce[i] = integrate_signal_002(GLM_cloud_E, True, MMIA_filtered[i][0,0]-cropping_margin, MMIA_filtered[i][-1,0]+cropping_margin)
             del GLM_cloud_E
 
 
             # MMIA
             # Computing the integral over MMIA signal
-            MMIA_cloud_E = integrate_signal_002(MMIA_filtered[i],False) # [micro J/m^2]
+            MMIA_cloud_E = integrate_signal_002(MMIA_filtered[i], False, MMIA_filtered[i][0,0]-cropping_margin, MMIA_filtered[i][-1,0]+cropping_margin) # [micro J/m^2]
             MMIA_cloud_E[:,1] = MMIA_cloud_E[:,1]*1e-6*(math.pi)*(400e3**2) #(Van der Velde et al 2020), [J]
             mmia_tce[i] = MMIA_cloud_E
             del MMIA_cloud_E

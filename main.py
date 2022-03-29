@@ -63,7 +63,7 @@ matlab_path = '/Applications/MATLAB_R2021b.app/bin/matlab'
 ### GLM ###
 
 # Time in seconds to analyze GLM before and after MMIA's time snippet
-cropping_margin = 0.5
+cropping_margin = 0.1
 
 # GLM pixel size [km²]
 glm_pix_size = 8*8  # Colombia
@@ -293,7 +293,7 @@ if just_results == False:
             # Convert GLM and MMIA data to Top Cloud Energy data
             show_plots = True
             print('Converting GLM and MMIA conditioned instrumental data into Top Cloud Energy for day %s\n' % matches[day])
-            [glm_tce, mmia_tce] = TFG.top_cloud_energy(GLM_data, MMIA_filtered, matches[day], show_plots, tce_figures_path, glm_pix_size)
+            [glm_tce, mmia_tce] = TFG.top_cloud_energy(GLM_data, MMIA_filtered, matches[day], show_plots, tce_figures_path, glm_pix_size, cropping_margin)
             print('Done!\n')
             show_plots = False
             
