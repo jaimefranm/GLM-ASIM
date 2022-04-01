@@ -2525,7 +2525,7 @@ def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figur
                 plt.close('all')
             
         else:
-            print('Signals for day %s event %d could not be correlated, so no conversion is possible\n' % (current_day, i))
+            print('Signals for day %s event %d could not be correlated, so no conversion is possible' % (current_day, i))
     
     return [glm_tce, mmia_tce]
 

@@ -2,13 +2,10 @@ import library as TFG
 import numpy as np
 import pickle
 import os
+import matplotlib.pyplot as plt
 
-# Just for plot presentation in LaTeX Style (slows the program)
-#plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
-
-# TODO: Sacar min peak number como variable global
-# TODO: Imponer max y min t en la integral
-
+# Just for plot presentation in LaTeX Style
+plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
 
 '''
 ###########################################################
@@ -402,7 +399,7 @@ if just_results == False:
                 # Corrected MMIA signals (3 photometers)
                 # Correlated TCE-converted GLM
                 # Correlated TCE-converted MMIA 777
-            TFG.data_to_mat(mmia_raw, GLM_xcorr, MMIA_xcorr, delays, matches[day], mats_output_path)
+            #TFG.data_to_mat(mmia_raw, GLM_xcorr, MMIA_xcorr, delays, matches[day], mats_output_path)
             
             print('Done!\n')
 
