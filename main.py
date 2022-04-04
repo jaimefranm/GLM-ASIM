@@ -5,7 +5,10 @@ import os
 import matplotlib.pyplot as plt
 
 # Just for plot presentation in LaTeX Style
-plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
+#plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
+
+# TODO: Sacar variables para stats
+# TODO: Revisar la salida en .mats
 
 '''
 ###########################################################
@@ -17,7 +20,7 @@ plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
 ### GENERAL ###
 
 # Boolean variable for setting everything for the first execution
-first_execution = True
+first_execution = False
 
 # Boolean variable for generating plots
 show_plots = False
@@ -40,15 +43,18 @@ just_results = False
 # Boolean variable for pre-oredered events in directories
 pre_event_directories = True
 
+# Boolean variable for deleting non-important directories at the end of execution
+delete_non_important_directories = False
+
 # Path to Hard Disk (with all MMIA files and where to store all files)
 #ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
-ssd_path = '/Users/jaimemorandominguez/Desktop/special_tests/6071_results'
+ssd_path = '/Users/jaimemorandominguez/Desktop/special_tests/jesus_problems_output_old'
 #ssd_path = '/home/lrg/Desktop/jesus_cases/mmia_cdf/Colombia'
 #ssd_path = '/home/lrg/Desktop/USA'
 
 # Path where MMIA's .cdf files are located
 #MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
-MMIA_files_path = '/Users/jaimemorandominguez/Desktop/special_tests/6071'
+MMIA_files_path = '/Users/jaimemorandominguez/Desktop/special_tests/jesus_problems'
 #MMIA_files_path = '/home/lrg/Desktop/jesus_cases/mmia_cdf/Colombia/interesting_2019'
 #MMIA_files_path = '/media/lrg/mmia_triggers_usa'
 
@@ -89,7 +95,7 @@ pre_conditioned_GLM = True
 pre_extracted_MMIA = True
 
 # Boolean variable for conditioning MMIA data if not done before
-pre_conditioned_MMIA = False
+pre_conditioned_MMIA = True
 
 # Maximum length in seconds of each event
 event_length = 2 # [s]
@@ -131,7 +137,6 @@ GLM_conditioned_bin = ssd_path + '/glm_cond_bin'
 MMIA_mats_path = ssd_path + '/mmia_mat'
 MMIA_filtered_bin = ssd_path + '/mmia_filt_bin'
 path_to_mmia_dirs = ssd_path + '/mmia_dirs'
-mmia_mats_files_path = ssd_path + '/mmia_mat'
 
 
 
@@ -190,8 +195,8 @@ if just_results == False:
 
     # MMIA data extraction
     if pre_extracted_MMIA == False:
-        os.system('mkdir ' + mmia_mats_files_path)
-        TFG.extract_MMIA_event_info(path_to_mmia_dirs, mmia_mats_files_path, matlab_path)
+        os.system('mkdir ' + MMIA_mats_path)
+        TFG.extract_MMIA_event_info(path_to_mmia_dirs, MMIA_mats_path, matlab_path)
 
 
     #########################################################################################################
@@ -399,10 +404,10 @@ if just_results == False:
                 # Corrected MMIA signals (3 photometers)
                 # Correlated TCE-converted GLM
                 # Correlated TCE-converted MMIA 777
-            #TFG.data_to_mat(mmia_raw, GLM_xcorr, MMIA_xcorr, delays, matches[day], mats_output_path)
+            TFG.data_to_mat(mmia_raw, GLM_xcorr, MMIA_xcorr, delays, matches[day], mats_output_path)
             
             print('Done!\n')
-
+            print(delays)
             del delays
             del GLM_avg
             del MMIA_avg
@@ -511,3 +516,19 @@ if pre_studied == False:
 
     TFG.more_statistics(peaks_bin, matches, ssd_path)
     show_plots = False
+
+
+########### DELETE ALL NON-IMPORTANT DIRECTORIES ###########
+
+if delete_non_important_directories == True:
+    
+    dirs_to_delete = general_variables_path+' '+\
+    GLM_ordered_dir+' '+\
+    GLM_ordered_outputs+' '+\
+    GLM_conditioned_bin+' '+\
+    MMIA_mats_path+' '+\
+    MMIA_filtered_bin+' '+\
+    path_to_mmia_dirs
+    
+    os.system('rm -rf ' + dirs_to_delete)
+    

@@ -1529,8 +1529,6 @@ def extract_GLM(dir_path, output_path, trigger_limits, matches, MMIA_filtered, a
 
                 start_time = MMIA_filtered[j][0,0] - cropping_margin
                 end_time = MMIA_filtered[j][-1,0] + cropping_margin
-                print(MMIA_filtered[j][0,0])
-                print(MMIA_filtered[j][-1,0])
 
                 #start_time = trigger_limits[j][0,4] - cropping_margin
                 #end_time = trigger_limits[j][0,5] + cropping_margin
@@ -2582,9 +2580,20 @@ def data_to_mat(mmia_raw, GLM_xcorr, MMIA_xcorr, delays, current_day, save_path)
         mmia_raw[j][:,0] = mmia_raw[j][:,0] + delays[j] * 0.002
     
     # Convert variables to final expected output
-    mmia_raw = np.array(mmia_raw, dtype=object)
-    delays_t = np.array(delays) * 0.002
+    delays_t = np.array(delays)
+    for j in range(len(delays_t)):
+        if type(delays_t[j]) == np.int64:
+            delays_t[j] = delays_t[j] * 0.002
     
-    # Save variables into a .mat
-    vars_to_save = {"corr_mmia_all":mmia_raw, "GLM_xcorr":np.array(GLM_xcorr, dtype=object), "MMIA_xcorr":np.array(MMIA_xcorr, dtype=object), "delays_t":delays_t}
-    sio.savemat(save_path + '/' + current_day + '.mat', vars_to_save)
+    # Save variables into a .mat per event
+    for j in range(len(GLM_xcorr)):
+        if type(GLM_xcorr[j]) == np.ndarray:
+            # Create a dictionary of the variables to save
+            vars_to_save = {}
+            vars_to_save['corr_mmia_all'] = np.array(mmia_raw[j],dtype=object)
+            vars_to_save['GLM_xcorr'] = np.array(GLM_xcorr[j],dtype=object)
+            vars_to_save['MMIA_xcorr'] = np.array(MMIA_xcorr[j],dtype=object)
+            vars_to_save['delay_t'] = delays_t[j]
+            # Save the library into a MATLAB .mat binary file
+            sio.savemat(save_path + '/' + current_day + '_' + str(j) + '.mat', vars_to_save)
+    
