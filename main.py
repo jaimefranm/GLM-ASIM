@@ -410,7 +410,7 @@ if just_results == False:
             #TFG.signal_data_to_mat(mmia_raw, GLM_xcorr, MMIA_xcorr, delays, matches[day], mats_output_path)
             
             print('Done!\n')
-            print(delays)
+            
             del delays
             del GLM_avg
             del MMIA_avg

@@ -2385,13 +2385,17 @@ def more_statistics(peaks_bin, matches, ssd_path, outputting_to_mat):
     outputting_to_mat['matching_time_distribution'] = np.array(matching_peaks_per_time,dtype=object)
 
     # Computing and adding GLM matching peaks over GLM peaks and same for MMIA per event
-    peak_relation = np.zeros((counter, 2))
+    peak_relation = np.zeros((counter, 3))
     pos = 0
     for i in range(len(GLM_peaks)):         # For every day in 'matches'
         for j in range(len(GLM_peaks[i])):  # For every event inside that day
             if type(matching_peaks[i][j]) == list: # If there are matching peaks
+                # GLM matching peaks VS GLM detected peaks
                 peak_relation[pos,0] = len(matching_peaks[i][j][0])/len(GLM_peaks[i][j])
+                # MMIA matching peaks VS MMIA detected peaks
                 peak_relation[pos,1] = len(matching_peaks[i][j][1])/len(MMIA_peaks[i][j])
+                # GLM matching peaks VS MMIA detected peaks
+                peak_relation[pos,2] = len(matching_peaks[i][j][0])/len(MMIA_peaks[i][j])
                 pos = pos+1
 
     outputting_to_mat['peak_relations'] = np.array(peak_relation,dtype=object)
