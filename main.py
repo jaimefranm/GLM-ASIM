@@ -400,11 +400,12 @@ if just_results == False:
             pickle.dump(MMIA_std, f)
             f.close()
             
-            # Saving into .mat's:
+            # Saving into daily .mat's:
                 # Corrected MMIA signals (3 photometers)
                 # Correlated TCE-converted GLM
                 # Correlated TCE-converted MMIA 777
-            TFG.data_to_mat(mmia_raw, GLM_xcorr, MMIA_xcorr, delays, matches[day], mats_output_path)
+                # Delays for events
+            TFG.signal_data_to_mat(mmia_raw, GLM_xcorr, MMIA_xcorr, delays, matches[day], mats_output_path)
             
             print('Done!\n')
             print(delays)

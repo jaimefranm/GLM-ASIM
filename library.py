@@ -2573,16 +2573,17 @@ def split_MMIA_events(mmia_raw, event_limits, event_filenames_on_day, split_wind
     print('Done!\n')
     return [mmia_raw, event_limits, event_filenames_on_day]
 
-def data_to_mat(mmia_raw, GLM_xcorr, MMIA_xcorr, delays, current_day, save_path):
+def signal_data_to_mat(mmia_raw, GLM_xcorr, MMIA_xcorr, delays, current_day, save_path):
     
     # Correct MMIA time on original signals
     for j in range(len(mmia_raw)):
-        mmia_raw[j][:,0] = mmia_raw[j][:,0] + delays[j] * 0.002
+        if type(delays[j]) == int: # Avoid None type delays (no xcorr was possible)
+            mmia_raw[j][:,0] = mmia_raw[j][:,0] + delays[j] * 0.002
     
     # Convert variables to final expected output
     delays_t = np.array(delays)
     for j in range(len(delays_t)):
-        if type(delays_t[j]) == np.int64:
+        if type(delays_t[j]) == np.int64: # Avoid None type delays (no xcorr was possible)
             delays_t[j] = delays_t[j] * 0.002
     
     # Save variables into a .mat per event
