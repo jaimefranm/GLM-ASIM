@@ -818,7 +818,7 @@ def GLM_processing(read_path, save_path, name, min_lat, max_lat, min_lon, max_lo
 
     df_export.to_csv(save_path+'/'+name+'.txt', sep=' ', index=False,header=False)
 
-def unify_GLM_data(output_path, MMIA_filtered, matches, current_day, cropping_margin):
+def unify_GLM_data(output_path, MMIA_filtered, matches, current_day):
     '''
     This function gets all the GLM's extracted data .txt files from the
     directory output_path and creates and returns list GLM_raw_data.
@@ -1749,11 +1749,13 @@ def get_GLM_MMIA_peaks(GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, m
     
     return [GLM_peaks, MMIA_peaks]
 
-def get_peak_matches(GLM_xcorr, GLM_xcorr_norm, MMIA_xcorr, MMIA_xcorr_norm, GLM_peaks, MMIA_peaks, show_plots, matches, current_day, match_figs_path):
+def get_peak_matches(GLM_xcorr, MMIA_xcorr, GLM_peaks, MMIA_peaks, show_plots, matches, current_day, match_figs_path):
     
     print('Starting peak matching...\n')
     
     common_peaks = [None] * len(GLM_xcorr)
+    # Time and signal values for matching peaks for outputting to .mat
+    common_peaks_values = [None] * len(GLM_xcorr)
     
     for j in range(len(GLM_xcorr)): # For every event in current day
             
@@ -1838,7 +1840,13 @@ def get_peak_matches(GLM_xcorr, GLM_xcorr_norm, MMIA_xcorr, MMIA_xcorr_norm, GLM
                     matching_MMIA_peaks_pos_pos.append(GLM_peaks_in_MMIA[k,1])
                 
             common_peaks[j] = [matching_GLM_peaks_pos_pos, matching_MMIA_peaks_pos_pos]
-                
+            
+            common_peaks_values[j] = [GLM_xcorr[j][GLM_peaks[j][matching_GLM_peaks_pos_pos],0], # GLM time for matching peaks
+            GLM_xcorr[j][GLM_peaks[j][matching_GLM_peaks_pos_pos],1],                           # GLM signal value for matching peaks
+            MMIA_xcorr[j][MMIA_peaks[j][matching_MMIA_peaks_pos_pos],0],                        # MMIA time for matching peaks
+            MMIA_xcorr[j][MMIA_peaks[j][matching_MMIA_peaks_pos_pos],1]]                        # MMIA signal value for matching peaks
+
+
             if show_plots == True:
                 
                 figure_name = matches[current_day] + '_' + str(j)
@@ -1905,7 +1913,7 @@ def get_peak_matches(GLM_xcorr, GLM_xcorr_norm, MMIA_xcorr, MMIA_xcorr_norm, GLM
     print('Done!')
     print(' ')
     
-    return common_peaks
+    return [common_peaks, common_peaks_values]
 
 def merge_days(matches, bin_path, filename_end_to_merge):
     # La idea de la funcion es generar una matrix de datos independiente de
@@ -1961,7 +1969,7 @@ def get_ministats(GLM_xcorr, MMIA_xcorr):
     
     return [GLM_avg, MMIA_avg, GLM_std, MMIA_std]
     
-def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, ssd_path):
+def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, ssd_path, outputting_to_mat):
     '''
     This function computes the average delay of GLM with respect to MMIA,
     both attending absolute values and real values.
@@ -2046,6 +2054,10 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
                     MMIA_counter = MMIA_counter + 1
     
     print('Done!')
+
+    # Adding delays_s_vec to dictionary to outputting .mat
+    outputting_to_mat['all_delays_t'] = delays_s_vec
+
     print('Writing results into ' + ssd_path + '/RESULTS.txt...')
     # Saving results into a .txt
     f =  open(ssd_path + '/RESULTS.txt', 'w')
@@ -2183,7 +2195,7 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         # MMIA delay vs MMIA std deviation in energy
         plt.figure()
         plt.scatter(MMIA_delay_signal[:,2]*0.002, MMIA_delay_signal[:,0]*0.002, color='r', marker='x')
-        plt.xlabel(r"MMIA event's energy stantard deviation [J]")
+        plt.xlabel("MMIA event's energy stantard deviation [J]")
         plt.ylabel('Trigger delay [s]')
         plt.grid('on')
         #plt.show()
@@ -2270,7 +2282,7 @@ def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, s
         # Closes all the figure windows
         plt.close('all')
 
-def more_statistics(peaks_bin, matches, ssd_path):
+def more_statistics(peaks_bin, matches, ssd_path, outputting_to_mat):
     
     print('Computing peak statistics...')
     
@@ -2278,6 +2290,7 @@ def more_statistics(peaks_bin, matches, ssd_path):
     GLM_peaks = TFG.merge_days(matches, peaks_bin, 'glm')
     MMIA_peaks = TFG.merge_days(matches, peaks_bin, 'mmia')
     matching_peaks = TFG.merge_days(matches, peaks_bin, 'matching')
+    matching_peaks_vals = TFG.merge_days(matches, peaks_bin, 'matching_vals')
     
     # Setting variables to study
     counter = 0
@@ -2286,12 +2299,13 @@ def more_statistics(peaks_bin, matches, ssd_path):
     sum_GLM_peaks = 0 # total peaks
     sum_matching_peaks = 0
     sum_MMIA_peaks = 0
+    matching_peak_time_signal_matrix = []
     
-    for i in range(len(GLM_peaks)):
-        for j in range(len(GLM_peaks[i])):
-            if type(matching_peaks[i][j]) == list:
+    for i in range(len(GLM_peaks)):         # For every day in 'matches'
+        for j in range(len(GLM_peaks[i])):  # For every event inside that day
+            if type(matching_peaks[i][j]) == list: # If there are matching peaks
                 
-                counter = counter + 1
+                counter = counter + 1       # Number of events with matching peaks
                 
                 # Matched vs Total Peaks for every instrument
                 sum_rel_GLM = sum_rel_GLM + len(matching_peaks[i][j][0])/len(GLM_peaks[i][j])
@@ -2303,6 +2317,10 @@ def more_statistics(peaks_bin, matches, ssd_path):
                 
                 # Total matched peaks
                 sum_matching_peaks = sum_matching_peaks + len(matching_peaks[i][j][0])
+
+                # Add every matching peak to the outputting matrix
+                for k in range(len(matching_peaks_vals[i][j])): # For every line
+                    matching_peak_time_signal_matrix.append(matching_peaks_vals[i][j][k])
     
     avg_GLM_rel = sum_rel_GLM/counter   # Average matched vs total GLM peaks per event
     avg_MMIA_rel = sum_rel_MMIA/counter # Average matched vs total MMIA peaks per event
@@ -2332,87 +2350,54 @@ def more_statistics(peaks_bin, matches, ssd_path):
     print(' ')
     print('Done! Your final results can be accessed at ' + ssd_path + '/RESULTS.txt\n')
     print(' ')
+    print('Computing outputting variables for external statistics...')
 
-def integrate_signal_002_old(event, isGLM, begin, end):
-
-    if isGLM == True:
-
-        new_length = math.ceil((end - begin) / 0.002)
-        int_data = np.zeros((new_length, 2))
-        int_data[:,1] = 1e-11
-        pos_0 = 0
-
-        for k in range(new_length): # For every sample accounting zeros at GLM rate
-            int_data[k,0] = round(begin + k*0.002, 3)
-            t_min = int_data[k,0]
-            t_max = t_min + 0.002
-            inside = True
-            count = 0
-
-            while inside == True:
-                raw_pos = pos_0 + count
-
-                if event[raw_pos,0] >= t_min and event[raw_pos,0] < t_max:
-                    # Simply add values inside window
-                    int_data[k,1] = int_data[k,1] + event[raw_pos,1]
-
-                # Check if the next GLM_total_raw_data sample will be added
-
-                raw_end = (raw_pos == (len(event)-1))
-
-                if raw_end == False:
-                    inside = (event[raw_pos+1,0]) < t_max
-                    if inside == True:
-                        count = count + 1
-                    else:
-                        count = count + 1
-                        pos_0 = raw_pos
-                else:
-                    inside = False
+    # Computing and adding peak values and time distribution to outputting .mat
+    matching_peaks_per_time = np.zeros((12,1))
+    for i in range(len(matching_peak_time_signal_matrix)):  # For every matching peak
+        hour = matching_peak_time_signal_matrix[i][0]/3600
+        if hour >= 0 and hour < 2:
+            matching_peaks_per_time[0] = matching_peaks_per_time[0] + 1
+        elif hour >= 2 and hour < 4:
+            matching_peaks_per_time[1] = matching_peaks_per_time[1] + 1
+        elif hour >= 4 and hour < 6:
+            matching_peaks_per_time[2] = matching_peaks_per_time[2] + 1
+        elif hour >= 6 and hour < 8:
+            matching_peaks_per_time[3] = matching_peaks_per_time[3] + 1
+        elif hour >= 8 and hour < 10:
+            matching_peaks_per_time[4] = matching_peaks_per_time[4] + 1
+        elif hour >= 10 and hour < 12:
+            matching_peaks_per_time[5] = matching_peaks_per_time[5] + 1
+        elif hour >= 12 and hour < 14:
+            matching_peaks_per_time[6] = matching_peaks_per_time[6] + 1
+        elif hour >= 14 and hour < 16:
+            matching_peaks_per_time[7] = matching_peaks_per_time[7] + 1
+        elif hour >= 16 and hour < 18:
+            matching_peaks_per_time[8] = matching_peaks_per_time[8] + 1
+        elif hour >= 18 and hour < 20:
+            matching_peaks_per_time[9] = matching_peaks_per_time[9] + 1
+        elif hour >= 20 and hour < 22:
+            matching_peaks_per_time[10] = matching_peaks_per_time[10] + 1
+        else:
+            matching_peaks_per_time[11] = matching_peaks_per_time[11] + 1
     
-    else: # If isGLM is false
-        
-        new_length = math.ceil((end - begin) / 0.002)
+    outputting_to_mat['glm_mmia_matching_time_signal'] = np.array(matching_peak_time_signal_matrix,dtype=object)
+    outputting_to_mat['matching_time_distribution'] = np.array(matching_peaks_per_time,dtype=object)
 
-        # Current table of data (current day)
+    # Computing and adding GLM matching peaks over GLM peaks and same for MMIA per event
+    peak_relation = np.zeros((counter, 2))
+    pos = 0
+    for i in range(len(GLM_peaks)):         # For every day in 'matches'
+        for j in range(len(GLM_peaks[i])):  # For every event inside that day
+            if type(matching_peaks[i][j]) == list: # If there are matching peaks
+                peak_relation[pos,0] = len(matching_peaks[i][j][0])/len(GLM_peaks[i][j])
+                peak_relation[pos,1] = len(matching_peaks[i][j][1])/len(MMIA_peaks[i][j])
+                pos = pos+1
 
-        int_data = np.zeros((new_length, 2))
-        int_data[:,1] = 1e-11
-        
-        pos_0 = 0
-        for k in range(new_length): # For every sample accounting zeros at GLM rate
+    outputting_to_mat['peak_relations'] = np.array(peak_relation,dtype=object)
 
-            # Fill time instance
-            int_data[k,0] = round(begin + k*0.002, 3)
-            
-            # Create windows of 0.002s and integrate their content
-            t_min = int_data[k,0]
-            t_max = t_min + 0.002
-            inside = True
-            count = 0
-            
-            while inside == True:
-                raw_pos = pos_0 + count
-
-                # Check if the next MMIA_filtered sample will be added
-
-                raw_end = (raw_pos == (len(event)-1))
-
-                if raw_end == False:
-                    inside = (event[raw_pos+1,0]) < t_max
-                    if inside == True:
-                        count = count + 1
-
-                    else:   # Next sample is NOT inside current window
-                        window_positions = np.linspace(pos_0,pos_0+count,count+1,dtype=int)
-                        int_data[k,1] = np.trapz(event[window_positions,1], x=event[window_positions,0])
-                        pos_0 = raw_pos+1
-                else:
-                    inside = False
-                    window_positions = np.linspace(pos_0,len(event)-1,len(event)-pos_0,dtype=int)
-                    int_data[k,1] = np.trapz(event[window_positions,1], x=event[window_positions,0])
-                
-    return int_data
+    print('Done!')
+    print(' ')
 
 def integrate_signal_002(event, isGLM, begin, end):
 

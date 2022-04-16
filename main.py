@@ -2,13 +2,14 @@ import library as TFG
 import numpy as np
 import pickle
 import os
-import matplotlib.pyplot as plt
+import scipy.io as sio
 
 # Just for plot presentation in LaTeX Style
+#import matplotlib.pyplot as plt
 #plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
 
 # TODO: Sacar variables para stats
-# TODO: Revisar la salida en .mats
+# TODO: Plotear señal contra señal picos correlacionados
 
 '''
 ###########################################################
@@ -118,7 +119,6 @@ mmia_min_peak_num = 3
 
 
 # New directories paths needed in the future
-
 general_variables_path = ssd_path + '/general_variables_bin'
 tce_bin = ssd_path + '/tce_bin'
 tce_figures_path = ssd_path + '/tce_figures'
@@ -138,6 +138,8 @@ MMIA_mats_path = ssd_path + '/mmia_mat'
 MMIA_filtered_bin = ssd_path + '/mmia_filt_bin'
 path_to_mmia_dirs = ssd_path + '/mmia_dirs'
 
+# Creating a dictionary containing all useful variables for statistics for final .mat outputting
+outputting_to_mat = {}
 
 
 ###### MMIA'S EVENT CHARACTERIZATION ######
@@ -262,7 +264,7 @@ if just_results == False:
         if pre_conditioned_GLM == False:
             
             # Unifying all data in a structure of matrices
-            GLM_raw_data = TFG.unify_GLM_data(GLM_ordered_outputs, MMIA_filtered, matches, day, cropping_margin)
+            GLM_raw_data = TFG.unify_GLM_data(GLM_ordered_outputs, MMIA_filtered, matches, day)
 
             # Conditioning GLM data for further analysis
             GLM_data = TFG.condition_GLM_data(GLM_raw_data, matches, show_plots, day)
@@ -405,7 +407,7 @@ if just_results == False:
                 # Correlated TCE-converted GLM
                 # Correlated TCE-converted MMIA 777
                 # Delays for events
-            TFG.signal_data_to_mat(mmia_raw, GLM_xcorr, MMIA_xcorr, delays, matches[day], mats_output_path)
+            #TFG.signal_data_to_mat(mmia_raw, GLM_xcorr, MMIA_xcorr, delays, matches[day], mats_output_path)
             
             print('Done!\n')
             print(delays)
@@ -444,15 +446,14 @@ if just_results == False:
 
 
             # Getting matching peaks
-
-            matching_peaks = TFG.get_peak_matches(GLM_xcorr, GLM_xcorr_norm, MMIA_xcorr, MMIA_xcorr_norm, GLM_peaks, MMIA_peaks, show_plots, matches, day, match_figs_path)
+            [matching_peaks, matching_peaks_values] = TFG.get_peak_matches(GLM_xcorr, MMIA_xcorr, GLM_peaks, MMIA_peaks, show_plots, matches, day, match_figs_path)
             show_plots = False
 
             print('Saving peak positions for day %s...' % matches[day])
             if day == 0:
                 os.system('mkdir ' + peaks_bin)
 
-            # Saving results in different binaries to make easier further use
+            # Saving results in different binaries to make easier further use:
 
             # Saving GLM_peaks
             f = open(peaks_bin + '/' + matches[day] + '_glm.pckl', 'wb')
@@ -467,6 +468,10 @@ if just_results == False:
             # Saving matching_peaks
             f = open(peaks_bin + '/' + matches[day] + '_matching.pckl', 'wb')
             pickle.dump(matching_peaks, f)
+            f.close()
+            # Saving matching_peak values
+            f = open(peaks_bin + '/' + matches[day] + '_matching_vals.pckl', 'wb')
+            pickle.dump(matching_peaks_values, f)
             f.close()
 
             print('Done!')
@@ -513,16 +518,17 @@ if pre_studied == False:
     os.system('mkdir ' + statistics_figures_path)
 
     show_plots = True
-    TFG.study_delays(statistics_bin, show_plots, statistics_figures_path, matches, ssd_path)
+    TFG.study_delays(statistics_bin, show_plots, statistics_figures_path, matches, ssd_path, outputting_to_mat)
 
-    TFG.more_statistics(peaks_bin, matches, ssd_path)
+    TFG.more_statistics(peaks_bin, matches, ssd_path, outputting_to_mat)
     show_plots = False
+    sio.savemat(ssd_path + '/' + 'vars_for_stats.mat', outputting_to_mat)
 
 
 ########### DELETE ALL NON-IMPORTANT DIRECTORIES ###########
 
 if delete_non_important_directories == True:
-    
+
     dirs_to_delete = general_variables_path+' '+\
     GLM_ordered_dir+' '+\
     GLM_ordered_outputs+' '+\
@@ -530,6 +536,6 @@ if delete_non_important_directories == True:
     MMIA_mats_path+' '+\
     MMIA_filtered_bin+' '+\
     path_to_mmia_dirs
-    
+
     os.system('rm -rf ' + dirs_to_delete)
-    
+
