@@ -424,307 +424,6 @@ def normalize(vector):
         vector_norm[i] = vector[i]/vector_max
     return vector_norm
 
-def GLM_processing_old(read_path, save_path, name, min_lat, max_lat, min_lon, max_lon, begin, end):
-    '''
-    This function (given by Jesús López) analyses all .nc files in a certain
-    directory, concatenating those files and extracting a .txt file with
-    all the useful information. The structure os the .txt is:
-        1st column: flash time [s]
-        2nd column: Event latitude [deg]
-        3rd column: Event longitude [deg]
-        4th column: Event ID
-        5th column: Flash latitude [deg]
-        6th column: Flash longitude [deg]
-        7th column: Radiance
-
-    Parameters
-    ----------
-    read_path : string
-        Path to the directory where the .nc files are located.
-        Note: No '/' at the end!
-    save_path : string
-        Path to the previously existing directory where the output .txt will
-        be located. Note: No '/' at the end!
-    name : string
-        Name of the output .txt file.
-    min_lat : float
-        Minimum latitude for the data extraction.
-    max_lat : float
-        Miximum latitude for the data extraction.
-    min_lon : float
-        Minimum longitude for the data extraction.
-    max_lon : float
-        Miximum longitude for the data extraction.
-    begin : float
-        Initial timing for data extraction.
-    end : float
-        Final timing for data extraction.
-
-    Returns
-    -------
-    A .txt file named name.txt in the directory save_path.
-    '''
-    
-    plot11 = list()
-    plot22 = list()
-    plot33 = list()
-    plot44 = list()
-    plot55 = list()
-    plot66 = list()
-    plot77 = list()
-
-    with os.scandir(read_path) as files:
-        files = [file.name for file in files if file.is_file() and file.name.endswith('.nc')]
-
-
-    for ind in range(0,len(files)):
-        print(' ')
-        count = 1 
-        plot1 = list()
-        plot2 = list()
-        plot3 = list()
-        plot4 = list()
-        plot5 = list()
-        plot6 = list()
-        plot7 = list()
-        
-       # for files in os.scandir(read_path):
-        yes = 0
-        no = 0
-        file1 = read_path+files[ind]
-        path = file1
-        total = len(files)
-            
-            ############ FIX UNSIGNED ATTRIBUTE ##############
-        print('GLM file '+str(ind+1)+'/'+str(total))
-        print('GLM file '+ file1)
-            
-        DE = nc.Dataset(file1,auto_mask_and_scale=False, mode='a')
-        print(DE.variables['flash_time_offset_of_first_event'])
-            
-            # add an attribute, and write out a modified file.
-                        
-                    #'flash_time_offset_of_first_event'
-                    
-# https://github.com/pytest-dev/pytest/issues/4116
-
-                    
-        ncvar1 = DE.variables['flash_time_offset_of_first_event']
-        if hasattr(ncvar1,'_Unsigned'):
-               print('Already Done')
-        else:
-               ncvar1.setncattr('_Unsigned', 'true')
-               print('Done')
-                        #print(ncvar)
-                        
-                    #'flash_time_offset_of_last_event'
-        ncvar2 = DE.variables['flash_time_offset_of_last_event']
-        if hasattr(ncvar2,'_Unsigned'):
-                print('Already Done')
-        else:
-                ncvar2.setncattr('_Unsigned', 'true')
-                print('Done')
-                        #print(ncvar)
-                        
-                    #'event_time_offset'
-        ncvar3 = DE.variables['event_time_offset']
-        if hasattr(ncvar3,'_Unsigned'):
-               print('Already Done')
-        else:
-               ncvar3.setncattr('_Unsigned', 'true')
-               print('Done')
-                        #print(ncvar)
-                        
-                    #'group_time_offset'
-        ncvar4 = DE.variables['group_time_offset']
-        if hasattr(ncvar4,'_Unsigned'):
-                print('Already Done')
-        else:
-                ncvar4.setncattr('_Unsigned', 'true')
-                print('Done')
-            
-            
-        ncvar5 = DE.variables['flash_lat']
-        if hasattr(ncvar5,'_Unsigned'):
-                print('Already Done')
-        else:
-                ncvar5.setncattr('_Unsigned', 'true')
-                print('Done')
-            
-            
-        ncvar6 = DE.variables['flash_lon']
-        if hasattr(ncvar6,'_Unsigned'):
-                print('Already Done')
-        else:
-                ncvar6.setncattr('_Unsigned', 'true')
-                print('Done')
-                       
-                
-        ncvar7 = DE.variables['event_lon']
-        if hasattr(ncvar7,'_Unsigned'):
-                print('Already Done')
-        else:
-                ncvar7.setncattr('_Unsigned', 'true')
-                print('Done')
-            
-            
-        ncvar8 = DE.variables['event_lat']
-        if hasattr(ncvar8,'_Unsigned'):
-                print('Already Done')
-        else:
-                ncvar8.setncattr('_Unsigned', 'true')
-                print('Done')
-            
-            
-        ncvar9 = DE.variables['event_energy']
-        if hasattr(ncvar9,'_Unsigned'):
-                print('Already Done')
-        else:
-                ncvar9.setncattr('_Unsigned', 'true')
-                print('Done')
-                DE.close()
-             
-                print('\n')
-
-        
-        ############ FLASH ID ##############
-        # CUANDO SE ALMACENA LOS FICHEROS CON NOMBRES ORIGINALES        
-        Start = (path[path.find("_s")+1:path.find("_e")])
-        Year = int(Start[1:5])
-        Day = int(Start[5:8])
-        Seconds = int(Start[8:10])*3600+int(Start[10:12])*60+int(Start[12:14])
-        
-        
-        ############ FLASH ID ##############
-        # CUANDO SE ALMACENA LOS FICHEROS CON NOMBRES SCRIPT POR RANGO TIEMPO          
-        # Start = (path[path.find("_s")+1:path.find("_e")])
-        # Year = int(Start[14:18])
-        # Day = int(Start[18:21])
-        # Seconds = int(Start[21:23])*3600+int(Start[23:25])*60+int(Start[25:28])
-        
-        
-        data = datetime.datetime(Year, 1, 1) + datetime.timedelta(Day - 1)
-        data_int = int(data.strftime("%Y%m%d"))
-                
-#        name = str(data_int) + '-' + str(Seconds)
-        
-        g16glm = Dataset(file1,'r')       
-        event_lat = g16glm.variables['event_lat'][:]
-        event_lon = g16glm.variables['event_lon'][:]
-        group_lat = g16glm.variables['group_lat'][:]
-        group_lon = g16glm.variables['group_lon'][:]
-        event_time = g16glm.variables['event_time_offset'][:]
-        flash_id = g16glm.variables['flash_id'][:]
-        group_parent_flash_id = g16glm.variables['group_parent_flash_id'][:]
-        group_id = g16glm.variables['group_id'][:]
-        event_parent_group_id = g16glm.variables['event_parent_group_id'][:]
-        flash_lat = g16glm.variables['flash_lat'][:]
-        flash_lon = g16glm.variables['flash_lon'][:]
-        energy = g16glm.variables['event_energy'][:]
-        
-        time_seconds_text = []
-        event_lat_text = []
-        event_lon_text = []
-        event_parent_flash_id_text = []
-        event_parent_flash_lat_text = []
-        event_parent_flash_lon_text = []
-        energy_text = []
-        
-        
-        a = len(event_parent_group_id)
-        if a != 0:         
-            event_time_2=np.matlib.zeros((a, 1))
-            k2 = 0
-            if event_time[a-1]>20:
-                for y in event_time:
-                    if y>30000:
-                        y = y-131072
-                    
-                    event_time_2[k2] = y/1000
-                    k2 = k2 +1
-            else:
-                event_time_2 = event_time
-            
-            date =  np.matlib.ones((a,1))*data_int
-            time = np.matlib.ones((a,1))*Seconds
-            time_seconds = np.matlib.zeros((a,1))
-            for x in range (a):
-                time_seconds[x] = time[x] + event_time_2[x]
-            
-            
-            
-            event_parent_flash_id=np.matlib.zeros((a, 1))
-            event_parent_flash_lat=np.matlib.zeros((a, 1))
-            event_parent_flash_lon=np.matlib.zeros((a, 1))
-            k=0
-            for num1 in flash_id:
-                lat = flash_lat[k]
-                lon = flash_lon[k]
-                k = k+1
-                ind2=np.nonzero(group_parent_flash_id == num1)
-                A = group_id[ind2]
-            
-                for num2 in A:
-                    ind4=np.nonzero(event_parent_group_id == num2)
-                    event_parent_flash_id[ind4] = num1
-                    event_parent_flash_lat[ind4] = lat
-                    event_parent_flash_lon[ind4] = lon
-
-            for b in range(0,a,1) :
-                cond = [event_lat[b]>=min_lat, event_lat[b]<=max_lat, event_lon[b]>=min_lon, event_lon[b]<=max_lon, time_seconds[b]>=begin, time_seconds[b]<=end]
-                if all(cond) == True :
-                    yes = yes + 1
-                    variable1 = time_seconds[b]
-                    variable2 = event_lat[b]
-                    variable3 = event_lon[b]
-                    variable4 = event_parent_flash_id[b]
-                    variable5 = event_parent_flash_lat[b]
-                    variable6 = event_parent_flash_lon[b]
-                    variable7 = energy[b]
-                    
-                    time_seconds_text.append(variable1)
-                    event_lat_text.append(variable2)
-                    event_lon_text.append(variable3)
-                    event_parent_flash_id_text.append(variable4)
-                    event_parent_flash_lat_text.append(variable5)
-                    event_parent_flash_lon_text.append(variable6)
-                    energy_text.append(variable7)
-                    
-                else:
-                    pass
-                    
-            plot1 = plot1 + time_seconds_text
-            plot2 = plot2 + event_lat_text
-            plot3 = plot3 + event_lon_text
-            plot4 = plot4 + event_parent_flash_id_text
-            plot5 = plot5 + event_parent_flash_lat_text
-            plot6 = plot6 + event_parent_flash_lon_text
-            plot7 = plot7 + energy_text
-            
-            count = count +1
-         
-        else:
-            count = count + 1
-            
-        plot11 = plot11 + plot1
-        plot22 = plot22 + plot2
-        plot33 = plot33 + plot3
-        plot44 = plot44 + plot4
-        plot55 = plot55 + plot5
-        plot66 = plot66 + plot6
-        plot77 = plot77 + plot7
-    
-    plotfinal1 = [float(i) for i in plot11]
-    plotfinal2 = [float(i) for i in plot22]
-    plotfinal3 = [float(i) for i in plot33]
-    plotfinal4 = [float(i) for i in plot44]
-    plotfinal5 = [float(i) for i in plot55]
-    plotfinal6 = [float(i) for i in plot66]
-    plotfinal7 = [float(i) for i in plot77]
-
-    datatxt = np.column_stack((plotfinal1,plotfinal2,plotfinal3,plotfinal4,plotfinal5,plotfinal6,plotfinal7))
-    np.savetxt(save_path+'/'+name+'.txt',datatxt,fmt=['%6f','%6f','%6f','%.0f','%6f','%6f','%.5e'])
-
 def GLM_processing(read_path, save_path, name, min_lat, max_lat, min_lon, max_lon, begin, end):
 
     length=len([f for f in os.listdir(read_path) if os.path.isfile(os.path.join(read_path, f))])
@@ -1841,10 +1540,10 @@ def get_peak_matches(GLM_xcorr, MMIA_xcorr, GLM_peaks, MMIA_peaks, show_plots, m
                 
             common_peaks[j] = [matching_GLM_peaks_pos_pos, matching_MMIA_peaks_pos_pos]
             
-            common_peaks_values[j] = [GLM_xcorr[j][GLM_peaks[j][matching_GLM_peaks_pos_pos],0], # GLM time for matching peaks
-            GLM_xcorr[j][GLM_peaks[j][matching_GLM_peaks_pos_pos],1],                           # GLM signal value for matching peaks
-            MMIA_xcorr[j][MMIA_peaks[j][matching_MMIA_peaks_pos_pos],0],                        # MMIA time for matching peaks
-            MMIA_xcorr[j][MMIA_peaks[j][matching_MMIA_peaks_pos_pos],1]]                        # MMIA signal value for matching peaks
+            common_peaks_values[j] = [GLM_xcorr[j][GLM_peaks[j][matching_GLM_peaks_pos_pos],0],     # GLM time for matching peaks
+                                      GLM_xcorr[j][GLM_peaks[j][matching_GLM_peaks_pos_pos],1],     # GLM signal value for matching peaks
+                                      MMIA_xcorr[j][MMIA_peaks[j][matching_MMIA_peaks_pos_pos],0],  # MMIA time for matching peaks
+                                      MMIA_xcorr[j][MMIA_peaks[j][matching_MMIA_peaks_pos_pos],1]]  # MMIA signal value for matching peaks
 
 
             if show_plots == True:
@@ -2319,8 +2018,11 @@ def more_statistics(peaks_bin, matches, ssd_path, outputting_to_mat):
                 sum_matching_peaks = sum_matching_peaks + len(matching_peaks[i][j][0])
 
                 # Add every matching peak to the outputting matrix
-                for k in range(len(matching_peaks_vals[i][j])): # For every line
-                    matching_peak_time_signal_matrix.append(matching_peaks_vals[i][j][k])
+                for k in range(len(matching_peaks_vals[i][j][0])): # For every peak
+                    matching_peak_time_signal_matrix.append([matching_peaks_vals[i][j][0][k],   # GLM matching peak time
+                                                             matching_peaks_vals[i][j][1][k],   # GLM matching peak signal value
+                                                             matching_peaks_vals[i][j][2][k],   # MMIA matching peak time
+                                                             matching_peaks_vals[i][j][3][k]])  # MMIA matching peak signal value
     
     avg_GLM_rel = sum_rel_GLM/counter   # Average matched vs total GLM peaks per event
     avg_MMIA_rel = sum_rel_MMIA/counter # Average matched vs total MMIA peaks per event
@@ -2349,13 +2051,12 @@ def more_statistics(peaks_bin, matches, ssd_path, outputting_to_mat):
     f.close()
     print(' ')
     print('Done! Your final results can be accessed at ' + ssd_path + '/RESULTS.txt\n')
-    print(' ')
     print('Computing outputting variables for external statistics...')
 
     # Computing and adding peak values and time distribution to outputting .mat
     matching_peaks_per_time = np.zeros((12,1))
     for i in range(len(matching_peak_time_signal_matrix)):  # For every matching peak
-        hour = matching_peak_time_signal_matrix[i][0]/3600
+        hour = matching_peak_time_signal_matrix[i][0]/3600  # Taking GLM time as reference
         if hour >= 0 and hour < 2:
             matching_peaks_per_time[0] = matching_peaks_per_time[0] + 1
         elif hour >= 2 and hour < 4:
@@ -2390,18 +2091,13 @@ def more_statistics(peaks_bin, matches, ssd_path, outputting_to_mat):
     for i in range(len(GLM_peaks)):         # For every day in 'matches'
         for j in range(len(GLM_peaks[i])):  # For every event inside that day
             if type(matching_peaks[i][j]) == list: # If there are matching peaks
-                # GLM matching peaks VS GLM detected peaks
+                # Matching peaks VS GLM detected peaks
                 peak_relation[pos,0] = len(matching_peaks[i][j][0])/len(GLM_peaks[i][j])
-                # MMIA matching peaks VS MMIA detected peaks
+                # Matching peaks VS MMIA detected peaks
                 peak_relation[pos,1] = len(matching_peaks[i][j][1])/len(MMIA_peaks[i][j])
-                # GLM matching peaks VS MMIA detected peaks
-                peak_relation[pos,2] = len(matching_peaks[i][j][0])/len(MMIA_peaks[i][j])
                 pos = pos+1
 
     outputting_to_mat['peak_relations'] = np.array(peak_relation,dtype=object)
-
-    print('Done!')
-    print(' ')
 
 def integrate_signal_002(event, isGLM, begin, end):
 

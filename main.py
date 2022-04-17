@@ -36,10 +36,10 @@ pre_tce = True
 pre_detected_peaks = True
 
 # Boolean variable for pre-studied peaks
-pre_studied = True
+pre_studied = False
 
 # Boolean variable for just outputting results
-just_results = False
+just_results = True
 
 # Boolean variable for pre-oredered events in directories
 pre_event_directories = True
@@ -49,13 +49,13 @@ delete_non_important_directories = False
 
 # Path to Hard Disk (with all MMIA files and where to store all files)
 #ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
-ssd_path = '/Users/jaimemorandominguez/Desktop/special_tests/jesus_problems_output_old'
+ssd_path = '/Users/jaimemorandominguez/Desktop/special_tests/jesus_results'
 #ssd_path = '/home/lrg/Desktop/jesus_cases/mmia_cdf/Colombia'
 #ssd_path = '/home/lrg/Desktop/USA'
 
 # Path where MMIA's .cdf files are located
 #MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
-MMIA_files_path = '/Users/jaimemorandominguez/Desktop/special_tests/jesus_problems'
+MMIA_files_path = '/Users/jaimemorandominguez/Desktop/special_tests/jesus'
 #MMIA_files_path = '/home/lrg/Desktop/jesus_cases/mmia_cdf/Colombia/interesting_2019'
 #MMIA_files_path = '/media/lrg/mmia_triggers_usa'
 
@@ -302,10 +302,11 @@ if just_results == False:
             show_plots = False
             
             # Saving GLM and MMIA Top Cloud Energy data
-            print('Saving TCE data for day %s...\n' % matches[day])
+            print('Saving TCE data for day %s...' % matches[day])
             f = open(tce_bin + '/' + matches[day] + '.pckl', 'wb')
             pickle.dump([glm_tce, mmia_tce], f)
             f.close()
+            print('Done!\n')
 
         else:
             print('Top Cloud Energy values were pre-calculated. Uploading from %s/%s.pckl...' % (tce_bin, matches[day]))
@@ -522,13 +523,16 @@ if pre_studied == False:
 
     TFG.more_statistics(peaks_bin, matches, ssd_path, outputting_to_mat)
     show_plots = False
+    print('Saving variables for statistics in %s...' % ssd_path)
     sio.savemat(ssd_path + '/' + 'vars_for_stats.mat', outputting_to_mat)
+    print('Done!\n')
 
 
 ########### DELETE ALL NON-IMPORTANT DIRECTORIES ###########
 
 if delete_non_important_directories == True:
 
+    print('Deleting all non-important output directories...')
     dirs_to_delete = general_variables_path+' '+\
     GLM_ordered_dir+' '+\
     GLM_ordered_outputs+' '+\
@@ -538,4 +542,4 @@ if delete_non_important_directories == True:
     path_to_mmia_dirs
 
     os.system('rm -rf ' + dirs_to_delete)
-
+    print('Done!')
