@@ -60,7 +60,7 @@ MMIA_files_path = '/Users/jaimemorandominguez/Desktop/special_tests/jesus'
 #MMIA_files_path = '/media/lrg/mmia_triggers_usa'
 
 # Path to MATLAB executable
-matlab_path = '/Applications/MATLAB_R2021b.app/bin/matlab'
+matlab_path = '/Applications/MATLAB_R2022a.app/bin/matlab'
 #matlab_path = '/usr/local/MATLAB/R2021b/bin/matlab'
 
 

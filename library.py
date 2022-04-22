@@ -252,7 +252,7 @@ def download_glm_from_google(ssd_path, year, day_year, t_ini, t_end):
         destination_file_name=ssd_path+'/'+str(glm_name_list[pos_in[1][x]]).replace("/","_")
         blob=bucket.blob(file)
         blob.download_to_filename(destination_file_name)
-        print("Blob {} downloaded to {}.".format(file, destination_file_name))
+        print("Blob {} downloaded to {}".format(file, destination_file_name))
 
 def upload_MMIA_mats(ssd_path, trigger_filenames, matches, current_day):
 
@@ -913,7 +913,7 @@ def condition_MMIA_data(MMIA_data, matches, show_plots, mmia_threshold, current_
             n = 15  # the larger n is, the smoother curve will be
             b = [1.0 / n] * n
             a = 1
-            current_data[:,1] = lfilter(b,a,current_data[:,1])
+            #current_data[:,1] = lfilter(b,a,current_data[:,1])
             
             if (current_data[:,1] < mmia_threshold).all() == True:
                 MMIA_filtered[j] = None
@@ -2086,7 +2086,7 @@ def more_statistics(peaks_bin, matches, ssd_path, outputting_to_mat):
     outputting_to_mat['matching_time_distribution'] = np.array(matching_peaks_per_time,dtype=object)
 
     # Computing and adding GLM matching peaks over GLM peaks and same for MMIA per event
-    peak_relation = np.zeros((counter, 3))
+    peak_relation = np.zeros((counter, 2))
     pos = 0
     for i in range(len(GLM_peaks)):         # For every day in 'matches'
         for j in range(len(GLM_peaks[i])):  # For every event inside that day
