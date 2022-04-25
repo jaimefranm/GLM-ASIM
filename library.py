@@ -953,7 +953,7 @@ def condition_MMIA_data(MMIA_data, matches, show_plots, mmia_threshold, current_
     print(' ')
     return MMIA_filtered
 
-def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, matches, show_plots, current_day, xcorr_figures):
+def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, matches, show_plots, current_day, xcorr_figures, GLM_ordered_outputs, tfg, ssd_path):
     '''
     This function gets snippets from GLM and MMIA and cross-correlates them
     to syncronize the signals and compare peaks.
@@ -1116,6 +1116,10 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
                 else: # delay==0 so no delay at all
                     MMIA_xc[k,:] = current_MMIA[k,:]
             del current_MMIA
+
+            if tfg == True:
+                txt_path = GLM_ordered_outputs + '/' + matches[current_day] + '_' + str(j) + '.txt'
+                os.system('cp ' + txt_path + ' ' + ssd_path +'/GLM_TGF_match_txt')
 
             if show_plots == 1:
                 # Plotting cross-correlated and syncronized GLM and MMIA normalized signals

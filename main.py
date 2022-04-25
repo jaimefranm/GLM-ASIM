@@ -5,8 +5,11 @@ import os
 import scipy.io as sio
 
 # Just for plot presentation in LaTeX Style
-import matplotlib.pyplot as plt
-plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
+#import matplotlib.pyplot as plt
+#plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
+
+# TODO: Sacar variables para stats
+# TODO: Plotear señal contra señal picos correlacionados
 
 '''
 ###########################################################
@@ -18,7 +21,7 @@ plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
 ### GENERAL ###
 
 # Boolean variable for setting everything for the first execution
-first_execution = False
+first_execution = True
 
 # Boolean variable for generating plots
 show_plots = False
@@ -36,7 +39,7 @@ pre_detected_peaks = True
 pre_studied = False
 
 # Boolean variable for just outputting results
-just_results = True
+just_results = False
 
 # Boolean variable for pre-oredered events in directories
 pre_event_directories = True
@@ -46,19 +49,23 @@ delete_non_important_directories = False
 
 # Path to Hard Disk (with all MMIA files and where to store all files)
 #ssd_path = '/Volumes/Jaime_F_HD/mmia_2020'
-ssd_path = '/Users/jaimemorandominguez/Desktop/special_tests/jesus_results'
+#ssd_path = '/Users/jaimemorandominguez/Desktop/special_tests/jesus_results'
 #ssd_path = '/home/lrg/Desktop/jesus_cases/mmia_cdf/Colombia'
+#ssd_path = '/home/lrg/Desktop/testOutputtingStatsNoFilter'
+ssd_path = '/home/lrg/Desktop/tgfResults'
 #ssd_path = '/home/lrg/Desktop/USA'
 
 # Path where MMIA's .cdf files are located
 #MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
-MMIA_files_path = '/Users/jaimemorandominguez/Desktop/special_tests/jesus'
+#MMIA_files_path = '/Users/jaimemorandominguez/Desktop/special_tests/jesus'
 #MMIA_files_path = '/home/lrg/Desktop/jesus_cases/mmia_cdf/Colombia/interesting_2019'
+#MMIA_files_path = '/media/lrg/colombia_2020/mmia_20'
+MMIA_files_path = '/home/lrg/Desktop/tgfResults/tgfCases'
 #MMIA_files_path = '/media/lrg/mmia_triggers_usa'
 
 # Path to MATLAB executable
-matlab_path = '/Applications/MATLAB_R2022a.app/bin/matlab'
-#matlab_path = '/usr/local/MATLAB/R2021b/bin/matlab'
+#matlab_path = '/Applications/MATLAB_R2022a.app/bin/matlab'
+matlab_path = '/usr/local/MATLAB/R2021b/bin/matlab'
 
 
 ### GLM ###
@@ -85,6 +92,8 @@ pre_extracted_GLM = True
 
 # Boolean variable for integrating GLM signals if not pre-done
 pre_conditioned_GLM = True
+
+tgf = True
 
 
 ### MMIA ###
@@ -351,7 +360,7 @@ if just_results == False:
             # Cross-correlating snippets
             show_plots = True
 
-            [GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, delays] = TFG.cross_correlate_GLM_MMIA(glm_tce, mmia_tce, GLM_norm, MMIA_norm, matches, show_plots, day, xcorr_figures_path)
+            [GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, delays] = TFG.cross_correlate_GLM_MMIA(glm_tce, mmia_tce, GLM_norm, MMIA_norm, matches, show_plots, day, xcorr_figures_path, GLM_ordered_outputs, tgf, ssd_path)
 
             # Calculating some values for further use
             [GLM_avg, MMIA_avg, GLM_std, MMIA_std] = TFG.get_ministats(GLM_xcorr, MMIA_xcorr)
