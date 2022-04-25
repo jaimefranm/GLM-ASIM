@@ -891,7 +891,7 @@ def condition_MMIA_data(MMIA_data, matches, show_plots, mmia_threshold, current_
 
         if type(MMIA_data[j]) == np.ndarray:
             
-            print('Applying a filter to reduce noise to MMIA signal, date %d snippet %d / %d...' % (int(matches[current_day]), j, len(MMIA_data)))
+            print('Conditioning MMIA signal, date %d snippet %d / %d...' % (int(matches[current_day]), j, len(MMIA_data)))
             
             current_data=np.zeros((len(MMIA_data[j]),2))
             current_data[:,0] = MMIA_data[j][:,0]
