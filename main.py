@@ -5,11 +5,8 @@ import os
 import scipy.io as sio
 
 # Just for plot presentation in LaTeX Style
-#import matplotlib.pyplot as plt
-#plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
-
-# TODO: Sacar variables para stats
-# TODO: Plotear señal contra señal picos correlacionados
+import matplotlib.pyplot as plt
+plt.rc('font', **{'family': 'serif', 'serif': ['latin modern roman']})
 
 '''
 ###########################################################
@@ -93,6 +90,7 @@ pre_extracted_GLM = True
 # Boolean variable for integrating GLM signals if not pre-done
 pre_conditioned_GLM = True
 
+# Boolean variable for defining TFG events (outputs GLM .txt's that could be cross-correlated)
 tgf = True
 
 

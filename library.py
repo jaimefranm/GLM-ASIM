@@ -1365,12 +1365,18 @@ def get_GLM_MMIA_peaks(GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, m
                 
             
                 # Calculating indexes of peaks in GLM signal
-                GLM_peak_vec, _ = find_peaks(GLM_vector, prominence = 0.3e-14, rel_height = 20)
+                #GLM_peak_vec, _ = find_peaks(GLM_vector, prominence = 0.3e-14, rel_height = 20)
+                # Jesus method
+                GLM_noise_level = np.percentile(GLM_vector,50, axis=0)
+                GLM_peak_vec, _ = find_peaks(GLM_vector, rel_height = 100, height = GLM_noise_level*1.5, prominence = 0.4)
 
 
                 # Calculating indexes of peaks in MMIA signal
-                MMIA_noise_level = np.percentile(MMIA_vector,90, axis=0)
-                MMIA_peak_vec, _ = find_peaks(MMIA_vector, rel_height = 100, height = MMIA_noise_level, prominence = 0.4, distance=2)
+                #MMIA_noise_level = np.percentile(MMIA_vector,90, axis=0)
+                #MMIA_peak_vec, _ = find_peaks(MMIA_vector, rel_height = 100, height = MMIA_noise_level, prominence = 0.4, distance=2)
+                # Jesus method
+                MMIA_noise_level = np.percentile(MMIA_vector,50, axis=0)
+                MMIA_peak_vec, _ = find_peaks(MMIA_vector, rel_height = 100, height = MMIA_noise_level*1.5, prominence = 0.4)
                 
                 
                 # Deleting those triggers with only 2 or less peaks (no meaningful sense)

@@ -6,13 +6,16 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% SET cdf MATLAB patch
+% SET cdf MATLAB patch path
 if isunix
     %addpath '/usr/local/MATLAB/matlab_cdf380_patch-64'
     addpath '/Users/jaimemorandominguez/Desktop/INIREC/main/GLM-ASIM/matlab_cdf380_patch-64'
 else
     addpath 'C:\matlab_cdf370_patch'
 end
+
+
+%% NO NEED TO TOUCH ANYTHING ELSE FROM HERE DOWN
 
 % Get path to the directory with all the directories with .cdf files
 dirs_path = fileread('mmia_dirs_path.txt');
