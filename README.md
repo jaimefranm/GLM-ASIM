@@ -201,7 +201,7 @@ While there are some other specific variables both for GLM and MMIA or for the f
 * `(glm/mmia)_min_peak_num`: Minimum number of peaks to find for GLM or MMIA, respectively. If found less (but not equal to) in any of them, the event is discarded.
 * `event_length`: Maximum time for a MMIA event in order to classify its *.cdf* files in events [s]
 * `split_window`: Minimum time with no signal inside a MMIA event to be considered two different events (because of the `event_length` definition)
-* `mmia_threshold`: Maximum value of MMIA signal to be considered noise $\left[\frac{\mu W}{m^2}\right]$
+* `mmia_threshold`: Maximum value of MMIA signal to be considered noise [microW/m^2]
 * `show_plots`: Boolean variable for outputting plots throughout the whole program
 * `delete_non_important_directories`: Boolean variable for deleting all non-necessary directories used in the execution of the program at its conclusion if not desired (saves storage)
 * `tgf`: Boolean variable for stating that all MMIA *.cdf* files represent TGF's, outputting all generated GLM *.txt* files that could cross-correlate with MMIA
@@ -209,7 +209,7 @@ While there are some other specific variables both for GLM and MMIA or for the f
 The other boolean variables are explained due to the contruction of the `main.py` scipt. The whole document consists of a series of steps as stated previously, which store their results just after finishing that step (storing MMIA conditioned data, then GLM conditioned data, then cross-correlated data, ...) so *if the previous steps were made correctly*, some parts of the code can be deactivated and necessary data will be uploaded from binaries, making the processing of data way faster if one step is in testing stage or a single little change was made. Those main sections and their corresponding boolean variable are:
 
 * Order MMIA *.cdf* files in daily events (`pre_event_directories`)
-* Extract MMIA data from *.cdf* files to *.mat* files (*pre_extracted_MMIA*)
+* Extract MMIA data from *.cdf* files to *.mat* files (`pre_extracted_MMIA`)
 
 And then, for every day with existing MMIA data:
 
