@@ -20,15 +20,17 @@ import scipy.io as sio
 import datetime
 import pandas as pd
 from scipy.signal import find_peaks
-from scipy.signal import lfilter
 from scipy.signal import correlate
 from google.cloud import storage
 import pickle
 import library as TFG
 
+
+# MMIA data extraction, upload and conditioning
+
 def get_MMIA_events(path_to_mmia_files, trigger_length):
 
-    print('Generating triggers from MMIA files...')
+    print('Generating events from MMIA files...')
     ######### Ordering MMIA files by name in ascending time #########
 
     # Moving away all files with size 0
@@ -117,12 +119,12 @@ def get_MMIA_events(path_to_mmia_files, trigger_length):
                 file_list.append(mmia_files[i])
                 day = datetime.datetime.strptime(str(mmia_data[i,1])[0:7], "%Y%j").strftime("%Y%m%d")
 
-    print('Trigger generation done!\n')
+    print('Event generation done!\n')
     return [matches, trigger_info]
 
 def create_MMIA_event_directories(matches, trigger_filenames, path_to_mmia_files, ssd_path):
 
-    print('Copying MMIA files into trigger directories...')
+    print('Copying MMIA files into event directories...')
     os.system('mkdir ' + ssd_path + '/mmia_dirs')
     for i in range(len(trigger_filenames)):
         for j in range(len(trigger_filenames[i])):
@@ -157,6 +159,335 @@ def extract_MMIA_event_info(path_to_mmia_dirs, mmia_mats_files_path, matlab_path
 
     if len(files) == 0:
         print('No MMIA data could be extracted for any day!')
+
+def upload_MMIA_mats(ssd_path, trigger_filenames, matches, current_day):
+
+    mmia_mat_files_path = ssd_path + '/mmia_mat'
+
+    with os.scandir(mmia_mat_files_path) as data_files:
+        data_files = [file.name for file in data_files if file.is_file() and file.name.endswith('data.mat')]
+
+    with os.scandir(mmia_mat_files_path) as info_files:
+        info_files = [file.name for file in info_files if file.is_file() and file.name.endswith('info.mat')]
+
+    trigger_limits = [None] * len(trigger_filenames[current_day])
+    mmia_raw = [None] * len(trigger_filenames[current_day])
+
+    for i in range(len(data_files)):
+
+        # Filling mmia raw data and trigger info variables
+
+        data_date = data_files[i][0:8]
+        
+        if data_date == matches[current_day]:
+        
+            if len(data_files[i]) == 19: # Event number is 1 digit
+                data_trigger = data_files[i][9:10]
+            elif len(data_files[i]) == 20:  # Event number is 2 digits
+                data_trigger = data_files[i][9:11]
+            elif len(data_files[i]) == 21:  # Event number is 3 digits (not expected but sometimes)
+                data_trigger = data_files[i][9:12]
+
+            data_mat = sio.loadmat(mmia_mat_files_path+'/'+data_date+'_' + data_trigger +'_data.mat')
+            info_mat = sio.loadmat(mmia_mat_files_path+'/'+data_date+'_' + data_trigger +'_info.mat')
+            current_data = data_mat.get('MMIA_all')
+            current_info = info_mat.get('space_time')
+            mmia_raw[int(data_trigger)] = current_data
+            trigger_limits[int(data_trigger)] = current_info
+
+    return [mmia_raw, trigger_limits]
+
+def split_MMIA_events(mmia_raw, event_limits, event_filenames_on_day, split_window):
+    
+    print('Looking for splittable events...')
+    for i in range(len(mmia_raw)):
+        
+        if type(mmia_raw[i]) == np.ndarray:
+        
+            event_times = mmia_raw[i][:,0]
+            
+            split_positions = []
+            
+            for j in range(1, len(event_times)):
+                if (event_times[j] - event_times[j-1]) >= split_window:
+                    split_positions.append(j)
+            
+            if len(split_positions) != 0:   # If there were time jumps
+                
+                if len(split_positions) == 1:
+                    
+                    current_mmia_raw_copy = mmia_raw[i]
+                    mmia_raw[i] = mmia_raw[i][0:split_positions[0]-2,:]
+                    mmia_raw.append(current_mmia_raw_copy[split_positions[0]+2:-1,:])
+                    event_limits.append(event_limits[i])
+                    event_filenames_on_day.append(event_filenames_on_day[i])
+                
+                else:
+                    
+                    current_mmia_raw_copy = mmia_raw[i]
+                    split_positions.append(-1)
+            
+                    for j in range(len(split_positions)):
+
+                        if j == 0:
+                            mmia_raw[i] = mmia_raw[i][0:split_positions[0]-2,:]
+                        elif j == (len(split_positions)-1):
+                            mmia_raw.append(current_mmia_raw_copy[split_positions[j-1]+2:-1,:])
+                            event_limits.append(event_limits[i])
+                            event_filenames_on_day.append(event_filenames_on_day[i])
+                        else:
+                            mmia_raw.append(current_mmia_raw_copy[split_positions[j-1]+2:split_positions[j]-2,:])
+                            event_limits.append(event_limits[i])
+                            event_filenames_on_day.append(event_filenames_on_day[i])
+        
+    print('Done!\n')
+    return [mmia_raw, event_limits, event_filenames_on_day]
+
+def merge_days(matches, bin_path, filename_end_to_merge):
+    # La idea de la funcion es generar una matrix de datos independiente de
+    # los datos de la matrix (delays, numero de muestras...)
+    
+    # Para ello los datos deben ser guardados por dia en binarios de antemano!
+    
+    # Generation of the blank datatable
+    matrix = [None] * len(matches)
+    
+    # If there is just one possible name type in bin_path
+    if filename_end_to_merge == 'no_type':
+        with os.scandir(bin_path) as files:
+            files = [file.name for file in files if file.is_file() and file.name.endswith('.pckl')]
+    else: # Multiple namings in bin_path
+        with os.scandir(bin_path) as files:
+            files = [file.name for file in files if file.is_file() and file.name.endswith(filename_end_to_merge + '.pckl')]
+    
+    for i in range(len(files)):
+        
+        # Get positioning in 'matrix'
+        day = files[i][0:8]
+        pos_in_matches = matches.index(day)
+        
+        # Upload contents of the binary into 'matrix'
+        if filename_end_to_merge == 'no_type':
+            f = open(bin_path + '/' + day + '.pckl', 'rb')
+            day_info_vector = pickle.load(f)
+            f.close()
+        else: # Multiple namings in bin_path
+            f = open(bin_path + '/' + day + '_' + filename_end_to_merge + '.pckl', 'rb')
+            day_info_vector = pickle.load(f)
+            f.close()
+        
+        matrix[pos_in_matches] = day_info_vector
+    
+    return matrix
+
+def condition_MMIA_data(MMIA_data, matches, show_plots, mmia_threshold, current_day):
+    '''
+    This functions takes 'MMIA_data', a list of MMIA tables of information
+    and applies a filter in 777.4nm photometer information vector to reduce
+    noise.
+    It also plots every signal with and without the filter applied
+    if 'show_plots' is True.
+
+    Parameters
+    ----------
+    MMIA_data : list
+        List of MMIA tables of information.
+    matches : list
+        List of common dates with GLM and MMIA data, as strings in the form
+        YearMonthDay.
+    window_size : int
+        Moving Average window size.
+    show_plots : bool
+        Boolean variable for plotting. Not ploting makes the program faster.
+
+    Returns
+    -------
+    MMIA_filtered : list
+        A list of MMIA tables of information with a filter applied
+        and only regarding time and 777.4nm photometer information
+    '''
+
+    # Creation of the new list of lists of MMIA data with Moving Average
+    MMIA_filtered = [None] * len(MMIA_data)
+
+    for j in range(len(MMIA_data)): # For every day of MMIA data
+
+        if type(MMIA_data[j]) == np.ndarray:
+            
+            print('Conditioning MMIA signal, date %d snippet %d / %d...' % (int(matches[current_day]), j, len(MMIA_data)))
+            
+            current_data=np.zeros((len(MMIA_data[j]),2))
+            current_data[:,0] = MMIA_data[j][:,0]
+            current_data[:,1] = MMIA_data[j][:,3] # 4th column as 777.4 nm
+
+            if show_plots == 1:
+                plt.figure(figsize=(9, 3))
+                figname = matches[current_day] + '_' + str(j) + '.pdf'
+                plt.plot(current_data[:,0],current_data[:,1],linewidth=0.5, color='r')
+                plt.savefig(figname)
+                # Clear the current axes
+                plt.cla() 
+                # Clear the current figure
+                plt.clf() 
+                # Closes all the figure windows
+                plt.close('all')
+            
+            if (current_data[:,1] < mmia_threshold).all() == True:
+                MMIA_filtered[j] = None
+                print('MMIA data for day %d snippet %d was just noise!' % (int(matches[current_day]), j))
+                print(' ')
+                
+            else:
+
+                # Assuring continuity in MMIA_filtered timesteps
+                MMIA_filtered[j] = TFG.fit_vector_in_MMIA_timesteps(current_data, int(matches[current_day]), j, show_plots, True)
+                
+                if show_plots == 1:
+                    # MMIA representation with filter and with rectified time
+                    plt.figure()
+                    plt.plot(MMIA_filtered[j][:,0],MMIA_filtered[j][:,1],linewidth=0.5, color='b')
+                    plt.title("Untreated (red) and filtered (blue) MMIA 777.4nm photometer detections of day %d snippet %d" % (int(matches[current_day]), j))
+                    plt.xlabel('Time [s]')
+                    plt.grid('on')
+                    plt.ylabel(r"Irradiance $\left[\dfrac{\mu W}{m^2}\right]$")
+                    plt.legend(['Untreated signal', 'Filtered signal'])
+                    plt.show()
+                    # Clear the current axes
+                    plt.cla() 
+                    # Clear the current figure
+                    plt.clf() 
+                    # Closes all the figure windows
+                    plt.close('all')
+                    
+            # Freeing memory
+            del current_data
+                
+        else:
+            print('There is no MMIA data for day %d, snippet %d' % (int(matches[current_day]), j))
+            print(' ')
+
+    print('Done!')
+    print(' ')
+    return MMIA_filtered
+
+def fit_vector_in_MMIA_timesteps(GLM_int_data, day, snippet, show_plots, is_MMIA):
+    '''
+    This function takes a time and signal pair of vectors and accommodates it
+    into MMIA timesteps of 0.00001s. Inexistent values in between are filled
+    by simple linear regression.
+
+    Parameters
+    ----------
+    GLM_int_data : list
+        List of daily lists of data snippets. NOT necessarily GLM data.
+    day : int
+        Date of the form YearMonthDay.
+    snippet : int
+        Index of the current snippet to expand inside day "day".
+    show_plots : bool
+        Boolean variable for showing plots all through the program.
+    is_MMIA : bool
+        Boolean variable for sepparating GLM expansion from MMIA expansion.
+
+    Returns
+    -------
+    GLM_current_data : list
+        List of daily lists of snippets like "GLM_int_Data" input, but with
+        accomodation to 0.00001s timesteps done.
+    '''
+
+    # Expanding snippet to fit missing MMIA timesteps to cross-correlate data
+    if is_MMIA == 0:
+        print('Fitting GLM data in MMIA timesteps date %d snippet %d...' % (day,snippet))
+    else:
+        print('Completing MMIA data in MMIA timesteps date %d snippet %d...' % (day,snippet))
+
+    new_length = 1          # New length of the timestep-wise matrix
+    acumulated_voids = 0    # Number of non-existing timesteps up to current line
+    void_info = np.zeros((len(GLM_int_data),4)) # Matrix of special info for each line:
+        # 1st column: .txt row number
+        # 2nd column: void timesteps after that row until next existing timestep
+        # 3rd column: Accumulated void timesteps before current line
+        # 4th column: Differential energy between existing timesteps ([i]-[i-1])
+
+    # Updating new_length value to make a new table with 1st dimension being new_length
+
+    GLM_int_data[0,0] = round(GLM_int_data[0,0],5)     # Rounding to MMIA period
+
+    for j in range(1,len(GLM_int_data)):
+
+        GLM_int_data[j,0] = round(GLM_int_data[j,0],5) # Rounding to MMIA period
+        void_info[j][0] = j    # Filling first void_info column
+
+        if GLM_int_data[j,0] == GLM_int_data[j-1,0] + 0.00001:  # Exactly one timestep ahead
+            new_length = new_length + 1
+            void_info[j][2] = acumulated_voids
+
+        elif GLM_int_data[j,0] < GLM_int_data[j-1,0] + 0.00001: # Less than a whole timestep (sometimes occur)
+            new_length = new_length + 1
+            void_info[j][2] = acumulated_voids
+
+        else:   # There are missing timesteps in between current and last row
+            void_timesteps = round((GLM_int_data[j,0] - GLM_int_data[j-1,0])/0.00001) - 1
+            new_length = new_length + 1 + void_timesteps
+            void_info[j-1][1] = void_timesteps
+            acumulated_voids = acumulated_voids + void_timesteps
+            void_info[j][2] = acumulated_voids
+            void_info[j-1][3] = GLM_int_data[j,1] - GLM_int_data[j-1,1]
+
+    # Filling the new time-wise matrix
+
+    GLM_current_data = np.zeros((new_length,2)) # New matrix with void lines for non-existing timesteps
+
+    for j in range(0,len(GLM_int_data)):
+        new_j = int(j + void_info[j,2])    # Row position in the new matrix
+        GLM_current_data[new_j,:] = GLM_int_data[j,:] # Filling rows with existing data
+
+        if void_info[j,1] != 0:   # Lines with non-existing timesteps afterwards
+            counter = 1       # Adds 0.00001s and a linear energy fraction
+            for k in range(new_j+1, new_j+1+int(void_info[j,1])):
+                GLM_current_data[k,0] = GLM_int_data[j,0] + counter * 0.00001
+                GLM_current_data[k,1] = GLM_int_data[j][1] + counter * (void_info[j][3]/void_info[j][1])
+                counter = counter + 1
+
+    if show_plots == 1 and is_MMIA == 0:
+        # GLM time representation at MMIA sample rate
+        plt.figure()
+        plt.plot(GLM_current_data[:,0])
+        #plt.title('GLM Time vector of day %d snippet %d with 0.00001s period' % (day, snippet))
+        plt.xlabel('Samples')
+        plt.ylabel('Time [s]')
+        plt.grid('on')
+        plt.show()
+        # Clear the current axes
+        plt.cla() 
+        # Clear the current figure
+        plt.clf() 
+        # Closes all the figure windows
+        plt.close('all')
+
+        # Radiance vs time graph representation
+        plt.figure()
+        plt.plot(GLM_current_data[:,0],GLM_current_data[:,1], linewidth=0.5, color='black')
+        plt.grid('on')
+        #plt.title('GLM signal of day %d snippet %d with MMIA sample rate (0.00001s)' % (day, snippet))
+        plt.xlabel('Time (second of the day) [s]')
+        plt.ylabel('Radiance [J]')
+        plt.show()
+        # Clear the current axes
+        plt.cla() 
+        # Clear the current figure
+        plt.clf() 
+        # Closes all the figure windows
+        plt.close('all')
+
+    print('Date %d snippet %d fit' % (day, snippet))
+    print(' ')
+
+    return GLM_current_data
+
+
+# GLM data download, extraction, upload and conditioning
 
 def download_GLM(ssd_path, trigger_filenames, MMIA_filtered, matches, current_day):
 
@@ -254,175 +585,82 @@ def download_glm_from_google(ssd_path, year, day_year, t_ini, t_end):
         blob.download_to_filename(destination_file_name)
         print("Blob {} downloaded to {}".format(file, destination_file_name))
 
-def upload_MMIA_mats(ssd_path, trigger_filenames, matches, current_day):
-
-    mmia_mat_files_path = ssd_path + '/mmia_mat'
-
-    with os.scandir(mmia_mat_files_path) as data_files:
-        data_files = [file.name for file in data_files if file.is_file() and file.name.endswith('data.mat')]
-
-    with os.scandir(mmia_mat_files_path) as info_files:
-        info_files = [file.name for file in info_files if file.is_file() and file.name.endswith('info.mat')]
-
-    trigger_limits = [None] * len(trigger_filenames[current_day])
-    mmia_raw = [None] * len(trigger_filenames[current_day])
-
-    for i in range(len(data_files)):
-
-        # Filling mmia raw data and trigger info variables
-
-        data_date = data_files[i][0:8]
-        
-        if data_date == matches[current_day]:
-        
-            if len(data_files[i]) == 19: # Event number is 1 digit
-                data_trigger = data_files[i][9:10]
-            elif len(data_files[i]) == 20:  # Event number is 2 digits
-                data_trigger = data_files[i][9:11]
-            elif len(data_files[i]) == 21:  # Event number is 3 digits (not expected but sometimes)
-                data_trigger = data_files[i][9:12]
-
-            data_mat = sio.loadmat(mmia_mat_files_path+'/'+data_date+'_' + data_trigger +'_data.mat')
-            info_mat = sio.loadmat(mmia_mat_files_path+'/'+data_date+'_' + data_trigger +'_info.mat')
-            current_data = data_mat.get('MMIA_all')
-            current_info = info_mat.get('space_time')
-            mmia_raw[int(data_trigger)] = current_data
-            trigger_limits[int(data_trigger)] = current_info
-
-    return [mmia_raw, trigger_limits]
-
-def mov_avg(vector, window_size):
+def extract_GLM(dir_path, output_path, trigger_limits, matches, MMIA_filtered, angle_margin, cropping_margin, current_day):
     '''
-    This function computes the moving average of a vector every "window_size"
-    samples, generating a new one.
+    This function calls every directory with .nc files and extracts the data
+    of all the files in it via GLM_processing function.
 
     Parameters
     ----------
-    vector : Array
-        Array of points to make the moving average of.
-    window_size : int
-        Size of the moving average samples.
+    dir_path : string
+        Path to the directory where the daily-ordered directories with
+        ordered separated .nc files are located.
+    output_path : string
+        Path to the existing directory where the resulting daily .txt files
+        will be located.
+    linet_times : list_to_events
+        List of daily lists of snippet info (time, geolocation and MMIA Id's)
+    matches : list
+        List of dates with existing GLM and MMIA files
+    MMIA_MA : list
+        List of daily lists of MMIA's time and signal (with a filter
+        applied) vectors for every snippet
+    angle_margin : float
+        Plus of latitude and longitude angle for extracting GLM data with
+        respect to Linet's data.
+    cropping_margin : float
+        Plus of time before and afer MMIA snippet times (or Linet times) for
+         extracting GLM data.
 
     Returns
     -------
-    moving_averages : array
-        A new vector of size len(vector)-window_size+1,
-        being the moving average of "vector"
+    .txt files for every snippet with GLM data prepared to be analyzed.
     '''
 
-    i = 0
-    moving_averages = []
-    while i < len(vector) - window_size + 1:
-        this_window = vector[i : i + window_size]
-        window_average = sum(this_window) / window_size
-        moving_averages.append(window_average)
-        i += 1
-
-    return(np.array(moving_averages))
-
-def signal_delay(data1, data2, show_plots, day, snip):
-    '''
-    This function determines the delay in samples of two signals using a
-    cross-correlation method.
-
-    Parameters
-    ----------
-    data1 : Array
-        First signal to be analyzed. In this case, GLM signal.
-    data2 : Array
-        Second signal to be analyzed. In this case, MMIA signal.
-    show_plots : bool
-        Boolean variable for showing plots all through the program.
-    day : int
-        Day of the snip to be cross-correlated in shape YearMonthDay
-    snip : int
-        Position of snip in day "day"
-
-    Returns
-    -------
-    real_delay_samples : The number of samples that data1 is shifted with
-        respect to data2.
-    '''
-
-    xcorr_factors = correlate(data1[:,1], data2[:,1], mode='full', method = 'auto')
-
-    len_x = len(data1)+len(data2)-1
-    x = np.empty(len_x)
-
-    for i in range(len_x):
-        if (len_x % 2) == 0: # Even number
-            x[i] = (i - (len_x/2))
-        if (len_x % 2) != 0: # Odd number
-            x[i] = (i - (len_x/2 - 0.5))
+    print('Extracting data from GLM .nc files into event .txt...')
+    print(' ')
     
-    if show_plots == 1:
-        plt.subplot(2, 1, 1)
-        plt.plot(data2[:,1],'-r', linewidth = 0.5)
-        plt.plot(data1[:,1],'-k', linewidth = 0.5)
-        plt.title('Non-correlated GLM (black) and MMIA (red) signals, day %d snippet %d' % (day, snip))
-        plt.ylabel('Normalized Energy')
-        plt.xlabel('Vector samples')
-        plt.legend(['MMIA signal', 'GLM signal'])
-        plt.grid('on')
-        # Clear the current axes
-        plt.cla() 
-        # Clear the current figure
-        plt.clf() 
-        # Closes all the figure windows
-        plt.close('all')
-
-        plt.subplot(2, 1, 2)
-        plt.plot(x, xcorr_factors, '-b', linewidth = 0.5)
-        plt.xlabel('Diff. Samples')
-        plt.ylabel('Correlation Factor')
-        plt.grid('on')
-        # Clear the current axes
-        plt.cla() 
-        # Clear the current figure
-        plt.clf() 
-        # Closes all the figure windows
-        plt.close('all')
-
-    max_factor_pos = np.where(xcorr_factors == max(xcorr_factors))[0][0]
-
-    if ((len(data1)+len(data2)) % 2 == 0): # len(x) is Odd
-        delay_samples = x[max_factor_pos]+(len(data1)-len(data2))/2
-
-    if ((len(data1)+len(data2)) % 2 != 0): # len(x) is Even
-        delay_samples = x[max_factor_pos]+(len(data1)-len(data2))/2 + 0.5
+    if current_day == 0:
+        # Creating a directory to store all resulting .txt
+        os.system('mkdir ' + output_path)
     
-    # Delay samples accounting actual positioning due to time:
-    if data1[0,0] > data2[0,0]: # GLM vector starts later
-        pos_MMIA_start_GLM = np.where(data2[:,0] <= data1[0,0])[0][-1]
-        real_delay_samples = delay_samples + pos_MMIA_start_GLM
-    elif data1[0,0] < data2[0,0]: # GLM vector starts earlier
-        pos_GLM_start_MMIA = np.where(data1[:,0] <= data2[0,0])[0][-1]
-        real_delay_samples = delay_samples - pos_GLM_start_MMIA
-    else:
-        real_delay_samples = delay_samples
+    for j in range(len(trigger_limits)):  # Analyzing each directory's .nc files
 
-    return (real_delay_samples)
+        if type(MMIA_filtered[j]) == np.ndarray and type(trigger_limits[j]) == np.ndarray:
 
-def normalize(vector):
-    '''
-    This function takes a signal vector and normalizes it, i.e. makes it fit
-    in range 0 to 1 according to its absolute maximum.
+            print('Extracting GLM data for date %d event %d...' % (int(matches[current_day]), j))
+            
+            trigger_name = matches[current_day] + '_' + str(j)
+            trigger_path = dir_path + '/' + trigger_name
+            
+            with os.scandir(trigger_path) as files:
+                files = [file.name for file in files if file.is_file() and file.name.endswith('.nc')]
+            
+            if len(files) == 0:
+                print('No GLM .nc files could be downloaded for day %s, event %d\n' % (matches[current_day], j))
+            else:
 
-    Parameters
-    ----------
-    vector : array
-        Vector to normalize
+                min_lat = trigger_limits[j][0,0] - angle_margin
+                max_lat = trigger_limits[j][0,1] + angle_margin
 
-    Returns
-    -------
-    None. Same vector but normalized.
-    '''
-    
-    vector_max = max(vector)
-    vector_norm = [None]*len(vector)
-    for i in range(len(vector)):
-        vector_norm[i] = vector[i]/vector_max
-    return vector_norm
+                min_lon = trigger_limits[j][0,2] - angle_margin
+                max_lon = trigger_limits[j][0,3] + angle_margin
+
+                start_time = MMIA_filtered[j][0,0] - cropping_margin
+                end_time = MMIA_filtered[j][-1,0] + cropping_margin
+
+                #start_time = trigger_limits[j][0,4] - cropping_margin
+                #end_time = trigger_limits[j][0,5] + cropping_margin
+
+                TFG.GLM_processing(dir_path+'/'+trigger_name+'/', output_path, trigger_name, min_lat, max_lat, min_lon, max_lon, start_time, end_time)
+                
+                print(' ')
+                print('Date %s event %d done\n' % (matches[current_day], j))
+        else:
+            print('GLM data for date %d event %d will not be extracted due to lack of MMIA data\n' % (int(matches[current_day]), j))
+
+    print('Your processed .txt files for day %s can be accessed at %s' % (matches[current_day], output_path))
+    print(' ')
 
 def GLM_processing(read_path, save_path, name, min_lat, max_lat, min_lon, max_lon, begin, end):
 
@@ -701,207 +939,78 @@ def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
 
     return GLM_data
 
-def fit_vector_in_MMIA_timesteps(GLM_int_data, day, snippet, show_plots, is_MMIA):
-    '''
-    This function takes a time and signal pair of vectors and accommodates it
-    into MMIA timesteps of 0.00001s. Inexistent values in between are filled
-    by simple linear regression.
 
-    Parameters
-    ----------
-    GLM_int_data : list
-        List of daily lists of data snippets. NOT necessarily GLM data.
-    day : int
-        Date of the form YearMonthDay.
-    snippet : int
-        Index of the current snippet to expand inside day "day".
-    show_plots : bool
-        Boolean variable for showing plots all through the program.
-    is_MMIA : bool
-        Boolean variable for sepparating GLM expansion from MMIA expansion.
+# Conversion to Top Cloud Energy (TCE)
 
-    Returns
-    -------
-    GLM_current_data : list
-        List of daily lists of snippets like "GLM_int_Data" input, but with
-        accomodation to 0.00001s timesteps done.
-    '''
-
-    # Expanding snippet to fit missing MMIA timesteps to cross-correlate data
-    if is_MMIA == 0:
-        print('Fitting GLM data in MMIA timesteps date %d snippet %d...' % (day,snippet))
-    else:
-        print('Completing MMIA data in MMIA timesteps date %d snippet %d...' % (day,snippet))
-
-    new_length = 1          # New length of the timestep-wise matrix
-    acumulated_voids = 0    # Number of non-existing timesteps up to current line
-    void_info = np.zeros((len(GLM_int_data),4)) # Matrix of special info for each line:
-        # 1st column: .txt row number
-        # 2nd column: void timesteps after that row until next existing timestep
-        # 3rd column: Accumulated void timesteps before current line
-        # 4th column: Differential energy between existing timesteps ([i]-[i-1])
-
-    # Updating new_length value to make a new table with 1st dimension being new_length
-
-    GLM_int_data[0,0] = round(GLM_int_data[0,0],5)     # Rounding to MMIA period
-
-    for j in range(1,len(GLM_int_data)):
-
-        GLM_int_data[j,0] = round(GLM_int_data[j,0],5) # Rounding to MMIA period
-        void_info[j][0] = j    # Filling first void_info column
-
-        if GLM_int_data[j,0] == GLM_int_data[j-1,0] + 0.00001:  # Exactly one timestep ahead
-            new_length = new_length + 1
-            void_info[j][2] = acumulated_voids
-
-        elif GLM_int_data[j,0] < GLM_int_data[j-1,0] + 0.00001: # Less than a whole timestep (sometimes occur)
-            new_length = new_length + 1
-            void_info[j][2] = acumulated_voids
-
-        else:   # There are missing timesteps in between current and last row
-            void_timesteps = round((GLM_int_data[j,0] - GLM_int_data[j-1,0])/0.00001) - 1
-            new_length = new_length + 1 + void_timesteps
-            void_info[j-1][1] = void_timesteps
-            acumulated_voids = acumulated_voids + void_timesteps
-            void_info[j][2] = acumulated_voids
-            void_info[j-1][3] = GLM_int_data[j,1] - GLM_int_data[j-1,1]
-
-    # Filling the new time-wise matrix
-
-    GLM_current_data = np.zeros((new_length,2)) # New matrix with void lines for non-existing timesteps
-
-    for j in range(0,len(GLM_int_data)):
-        new_j = int(j + void_info[j,2])    # Row position in the new matrix
-        GLM_current_data[new_j,:] = GLM_int_data[j,:] # Filling rows with existing data
-
-        if void_info[j,1] != 0:   # Lines with non-existing timesteps afterwards
-            counter = 1       # Adds 0.00001s and a linear energy fraction
-            for k in range(new_j+1, new_j+1+int(void_info[j,1])):
-                GLM_current_data[k,0] = GLM_int_data[j,0] + counter * 0.00001
-                GLM_current_data[k,1] = GLM_int_data[j][1] + counter * (void_info[j][3]/void_info[j][1])
-                counter = counter + 1
-
-    if show_plots == 1 and is_MMIA == 0:
-        # GLM time representation at MMIA sample rate
-        plt.figure()
-        plt.plot(GLM_current_data[:,0])
-        #plt.title('GLM Time vector of day %d snippet %d with 0.00001s period' % (day, snippet))
-        plt.xlabel('Samples')
-        plt.ylabel('Time [s]')
-        plt.grid('on')
-        plt.show()
-        # Clear the current axes
-        plt.cla() 
-        # Clear the current figure
-        plt.clf() 
-        # Closes all the figure windows
-        plt.close('all')
-
-        # Radiance vs time graph representation
-        plt.figure()
-        plt.plot(GLM_current_data[:,0],GLM_current_data[:,1], linewidth=0.5, color='black')
-        plt.grid('on')
-        #plt.title('GLM signal of day %d snippet %d with MMIA sample rate (0.00001s)' % (day, snippet))
-        plt.xlabel('Time (second of the day) [s]')
-        plt.ylabel('Radiance [J]')
-        plt.show()
-        # Clear the current axes
-        plt.cla() 
-        # Clear the current figure
-        plt.clf() 
-        # Closes all the figure windows
-        plt.close('all')
-
-    print('Date %d snippet %d fit' % (day, snippet))
-    print(' ')
-
-    return GLM_current_data
-
-def get_MMIA_dates(read_path):
-    '''
-    This function just hovers over MMIA .cdf files to extract a list with
-    all existing dates with MMIA data.
-
-    Parameters
-    ----------
-    read_path : string
-        Path to the directory where all MMIA .cdf files are stored.
-
-    Returns
-    -------
-    MMIA_dates : list
-        List of strings with all dates with existing MMIA data, in the form
-        YearMonthDay.
-    '''
-
-    print('Getting the list of MMIA dates with existing data..')
-
-    with os.scandir(read_path) as files:
-        files = [file.name for file in files if file.is_file() and file.name.endswith('.cdf')]
-    if len(files)==0:
-        print('Error: No MMIA .cdf files found to process!')
-
-    MMIA_dates = []
-
-    for i in range(len(files)):
-        date = files[i][50:54]+files[i][55:57]+files[i][58:60]
-
-        if i==0:            # First file does not have any existing date
-            MMIA_dates.append(date)
-        else:               # All the other files
-            if MMIA_dates.count(date) == 0: # If there is no register of that date
-                MMIA_dates.append(date)
-
-    print('Done')
-    print(' ')
-
-    return MMIA_dates
-
-def condition_MMIA_data(MMIA_data, matches, show_plots, mmia_threshold, current_day):
-    '''
-    This functions takes 'MMIA_data', a list of MMIA tables of information
-    and applies a filter in 777.4nm photometer information vector to reduce
-    noise.
-    It also plots every signal with and without the filter applied
-    if 'show_plots' is True.
-
-    Parameters
-    ----------
-    MMIA_data : list
-        List of MMIA tables of information.
-    matches : list
-        List of common dates with GLM and MMIA data, as strings in the form
-        YearMonthDay.
-    window_size : int
-        Moving Average window size.
-    show_plots : bool
-        Boolean variable for plotting. Not ploting makes the program faster.
-
-    Returns
-    -------
-    MMIA_filtered : list
-        A list of MMIA tables of information with a filter applied
-        and only regarding time and 777.4nm photometer information
-    '''
-
-    # Creation of the new list of lists of MMIA data with Moving Average
-    MMIA_filtered = [None] * len(MMIA_data)
-
-    for j in range(len(MMIA_data)): # For every day of MMIA data
-
-        if type(MMIA_data[j]) == np.ndarray:
+def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figures_path, glm_pix_size, cropping_margin):
+    
+    glm_tce = [None] * len(GLM_data)
+    mmia_tce = [None] * len(MMIA_filtered)
+    
+    for i in range(len(GLM_data)): # For every event
+    
+        if type(GLM_data[i]) == np.ndarray and type(MMIA_filtered[i]) == np.ndarray:
+            print('Converting instrumental signals to Top Cloud Energy for day %s event %d / %d' % (current_day, i, len(GLM_data)))
             
-            print('Conditioning MMIA signal, date %d snippet %d / %d...' % (int(matches[current_day]), j, len(MMIA_data)))
-            
-            current_data=np.zeros((len(MMIA_data[j]),2))
-            current_data[:,0] = MMIA_data[j][:,0]
-            current_data[:,1] = MMIA_data[j][:,3] # 4th column as 777.4 nm
+            # GLM
+            GLM_cloud_E = GLM_data[i]
+            GLM_cloud_E[:,1] = GLM_data[i][:,1] * 6611570247.933885 * glm_pix_size*1e6 #[J]
+            glm_tce[i] = integrate_signal_002(GLM_cloud_E, True, MMIA_filtered[i][0,0]-cropping_margin, MMIA_filtered[i][-1,0]+cropping_margin)
+            del GLM_cloud_E
 
-            if show_plots == 1:
-                plt.figure(figsize=(9, 3))
-                figname = matches[current_day] + '_' + str(j) + '.pdf'
-                plt.plot(current_data[:,0],current_data[:,1],linewidth=0.5, color='r')
-                plt.savefig(figname)
+
+            # MMIA
+            # Computing the integral over MMIA signal
+            MMIA_cloud_E = integrate_signal_002(MMIA_filtered[i], False, MMIA_filtered[i][0,0]-cropping_margin, MMIA_filtered[i][-1,0]+cropping_margin) # [micro J/m^2]
+            MMIA_cloud_E[:,1] = MMIA_cloud_E[:,1]*1e-6*(math.pi)*(400e3**2) #(Van der Velde et al 2020), [J]
+            mmia_tce[i] = MMIA_cloud_E
+            del MMIA_cloud_E
+
+            if show_plots == True:
+                plt.figure(figsize=(10, 6))
+                figure_name = current_day + '_' + str(i)
+                plt.plot(glm_tce[i][:,0], glm_tce[i][:,1], color='black', linewidth=0.5)
+                plt.plot(mmia_tce[i][:,0], mmia_tce[i][:,1], color='red', linewidth=0.5)
+                plt.yscale('log')
+                plt.legend(['GLM','MMIA'])
+                plt.title('GLM (black) and MMIA (red) correlated signals converted to Top Cloud Energy for day %s event %d' % (current_day, i))
+                plt.xlabel('Time [s]')
+                plt.ylabel('Top Cloud Energy [J]')
+                plt.grid('on')
+                plt.savefig(tce_figures_path + '/' + figure_name + '_both.pdf')
+                #plt.show()
+                # Clear the current axes
+                plt.cla() 
+                # Clear the current figure
+                plt.clf() 
+                # Closes all the figure windows
+                plt.close('all')
+                
+                plt.figure(figsize=(10, 6))
+                figure_name = current_day + '_' + str(i)
+                plt.plot(glm_tce[i][:,0], glm_tce[i][:,1], color='black', linewidth=0.5)
+                plt.title('GLM correlated signal converted to Top Cloud Energy for day %s event %d' % (current_day, i))
+                plt.xlabel('Time [s]')
+                plt.ylabel('Top Cloud Energy [J]')
+                plt.grid('on')
+                plt.savefig(tce_figures_path + '/' + figure_name + '_glm.pdf')
+                #plt.show()
+                # Clear the current axes
+                plt.cla() 
+                # Clear the current figure
+                plt.clf() 
+                # Closes all the figure windows
+                plt.close('all')
+                
+                plt.figure(figsize=(10, 6))
+                figure_name = current_day + '_' + str(i)
+                plt.plot(mmia_tce[i][:,0], mmia_tce[i][:,1], color='red', linewidth=0.5)
+                plt.title('MMIA correlated signal converted to Top Cloud Energy for day %s event %d' % (current_day, i))
+                plt.xlabel('Time [s]')
+                plt.ylabel('Top Cloud Energy [J]')
+                plt.grid('on')
+                plt.savefig(tce_figures_path + '/' + figure_name + '_mmia.pdf')
+                #plt.show()
                 # Clear the current axes
                 plt.cla() 
                 # Clear the current figure
@@ -909,49 +1018,45 @@ def condition_MMIA_data(MMIA_data, matches, show_plots, mmia_threshold, current_
                 # Closes all the figure windows
                 plt.close('all')
             
-            #-----------------------------------------------------------------------------------------------------------------------
-            n = 15  # the larger n is, the smoother curve will be
-            b = [1.0 / n] * n
-            a = 1
-            #current_data[:,1] = lfilter(b,a,current_data[:,1])
-            
-            if (current_data[:,1] < mmia_threshold).all() == True:
-                MMIA_filtered[j] = None
-                print('MMIA data for day %d snippet %d was just noise!' % (int(matches[current_day]), j))
-                print(' ')
-                
-            else:
-
-                # Assuring continuity in MMIA_filtered timesteps
-                MMIA_filtered[j] = TFG.fit_vector_in_MMIA_timesteps(current_data, int(matches[current_day]), j, show_plots, True)
-                
-                if show_plots == 1:
-                    # MMIA representation with filter and with rectified time
-                    plt.figure()
-                    plt.plot(MMIA_filtered[j][:,0],MMIA_filtered[j][:,1],linewidth=0.5, color='b')
-                    plt.title("Untreated (red) and filtered (blue) MMIA 777.4nm photometer detections of day %d snippet %d" % (int(matches[current_day]), j))
-                    plt.xlabel('Time [s]')
-                    plt.grid('on')
-                    plt.ylabel(r"Irradiance $\left[\dfrac{\mu W}{m^2}\right]$")
-                    plt.legend(['Untreated signal', 'Filtered signal'])
-                    plt.show()
-                    # Clear the current axes
-                    plt.cla() 
-                    # Clear the current figure
-                    plt.clf() 
-                    # Closes all the figure windows
-                    plt.close('all')
-                    
-            # Freeing memory
-            del current_data
-                
         else:
-            print('There is no MMIA data for day %d, snippet %d' % (int(matches[current_day]), j))
-            print(' ')
+            print('Signals for day %s event %d could not be correlated, so no conversion is possible' % (current_day, i))
+    
+    return [glm_tce, mmia_tce]
 
-    print('Done!')
-    print(' ')
-    return MMIA_filtered
+def integrate_signal_002(event, isGLM, begin, end):
+
+    new_length = math.ceil((end - begin) / 0.002)
+    int_data = np.zeros((new_length, 2))
+
+    for k in range(new_length): # For every sample accounting zeros at GLM rate
+        
+        # Fill time instance
+        int_data[k,0] = round(begin + k*0.002, 3)
+        
+        # Create windows of 0.002s and integrate their content
+        t_min = int_data[k,0]
+        t_max = t_min + 0.002
+        
+        # Check positions in the signal vector which are inside current window
+        window_indx = np.where(np.logical_and(event[:,0] >= t_min, event[:,0] < t_max))[0]
+        
+        if len(window_indx) == 0:
+            int_data[k,1] = 1e-11
+        
+        else: # Data inside this window exists
+            
+            if isGLM == True: # Event represents GLM signal
+                # Simply add values inside window
+                int_data[k,1] = sum(event[window_indx,1])
+                
+            else: # Event represents MMIA signal
+                # Trapezoid integration
+                int_data[k,1] = np.trapz(event[window_indx,1], x=event[window_indx,0])
+                
+    return int_data
+
+
+# Cross-Correlation of GLM and MMIA
 
 def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, matches, show_plots, current_day, xcorr_figures, GLM_ordered_outputs, tfg, ssd_path):
     '''
@@ -1169,82 +1274,137 @@ def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, m
     print(' ')
     return [GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, delays]
 
-def extract_GLM(dir_path, output_path, trigger_limits, matches, MMIA_filtered, angle_margin, cropping_margin, current_day):
+def signal_delay(data1, data2, show_plots, day, snip):
     '''
-    This function calls every directory with .nc files and extracts the data
-    of all the files in it via GLM_processing function.
+    This function determines the delay in samples of two signals using a
+    cross-correlation method.
 
     Parameters
     ----------
-    dir_path : string
-        Path to the directory where the daily-ordered directories with
-        ordered separated .nc files are located.
-    output_path : string
-        Path to the existing directory where the resulting daily .txt files
-        will be located.
-    linet_times : list_to_events
-        List of daily lists of snippet info (time, geolocation and MMIA Id's)
-    matches : list
-        List of dates with existing GLM and MMIA files
-    MMIA_MA : list
-        List of daily lists of MMIA's time and signal (with a filter
-        applied) vectors for every snippet
-    angle_margin : float
-        Plus of latitude and longitude angle for extracting GLM data with
-        respect to Linet's data.
-    cropping_margin : float
-        Plus of time before and afer MMIA snippet times (or Linet times) for
-         extracting GLM data.
+    data1 : Array
+        First signal to be analyzed. In this case, GLM signal.
+    data2 : Array
+        Second signal to be analyzed. In this case, MMIA signal.
+    show_plots : bool
+        Boolean variable for showing plots all through the program.
+    day : int
+        Day of the snip to be cross-correlated in shape YearMonthDay
+    snip : int
+        Position of snip in day "day"
 
     Returns
     -------
-    .txt files for every snippet with GLM data prepared to be analyzed.
+    real_delay_samples : The number of samples that data1 is shifted with
+        respect to data2.
     '''
 
-    print('Extracting data from GLM .nc files into event .txt...')
-    print(' ')
+    xcorr_factors = correlate(data1[:,1], data2[:,1], mode='full', method = 'auto')
+
+    len_x = len(data1)+len(data2)-1
+    x = np.empty(len_x)
+
+    for i in range(len_x):
+        if (len_x % 2) == 0: # Even number
+            x[i] = (i - (len_x/2))
+        if (len_x % 2) != 0: # Odd number
+            x[i] = (i - (len_x/2 - 0.5))
     
-    if current_day == 0:
-        # Creating a directory to store all resulting .txt
-        os.system('mkdir ' + output_path)
+    if show_plots == 1:
+        plt.subplot(2, 1, 1)
+        plt.plot(data2[:,1],'-r', linewidth = 0.5)
+        plt.plot(data1[:,1],'-k', linewidth = 0.5)
+        plt.title('Non-correlated GLM (black) and MMIA (red) signals, day %d snippet %d' % (day, snip))
+        plt.ylabel('Normalized Energy')
+        plt.xlabel('Vector samples')
+        plt.legend(['MMIA signal', 'GLM signal'])
+        plt.grid('on')
+        # Clear the current axes
+        plt.cla() 
+        # Clear the current figure
+        plt.clf() 
+        # Closes all the figure windows
+        plt.close('all')
+
+        plt.subplot(2, 1, 2)
+        plt.plot(x, xcorr_factors, '-b', linewidth = 0.5)
+        plt.xlabel('Diff. Samples')
+        plt.ylabel('Correlation Factor')
+        plt.grid('on')
+        # Clear the current axes
+        plt.cla() 
+        # Clear the current figure
+        plt.clf() 
+        # Closes all the figure windows
+        plt.close('all')
+
+    max_factor_pos = np.where(xcorr_factors == max(xcorr_factors))[0][0]
+
+    if ((len(data1)+len(data2)) % 2 == 0): # len(x) is Odd
+        delay_samples = x[max_factor_pos]+(len(data1)-len(data2))/2
+
+    if ((len(data1)+len(data2)) % 2 != 0): # len(x) is Even
+        delay_samples = x[max_factor_pos]+(len(data1)-len(data2))/2 + 0.5
     
-    for j in range(len(trigger_limits)):  # Analyzing each directory's .nc files
+    # Delay samples accounting actual positioning due to time:
+    if data1[0,0] > data2[0,0]: # GLM vector starts later
+        pos_MMIA_start_GLM = np.where(data2[:,0] <= data1[0,0])[0][-1]
+        real_delay_samples = delay_samples + pos_MMIA_start_GLM
+    elif data1[0,0] < data2[0,0]: # GLM vector starts earlier
+        pos_GLM_start_MMIA = np.where(data1[:,0] <= data2[0,0])[0][-1]
+        real_delay_samples = delay_samples - pos_GLM_start_MMIA
+    else:
+        real_delay_samples = delay_samples
 
-        if type(MMIA_filtered[j]) == np.ndarray and type(trigger_limits[j]) == np.ndarray:
+    return (real_delay_samples)
 
-            print('Extracting GLM data for date %d event %d...' % (int(matches[current_day]), j))
-            
-            trigger_name = matches[current_day] + '_' + str(j)
-            trigger_path = dir_path + '/' + trigger_name
-            
-            with os.scandir(trigger_path) as files:
-                files = [file.name for file in files if file.is_file() and file.name.endswith('.nc')]
-            
-            if len(files) == 0:
-                print('No GLM .nc files could be downloaded for day %s, event %d\n' % (matches[current_day], j))
-            else:
+def normalize(vector):
+    '''
+    This function takes a signal vector and normalizes it, i.e. makes it fit
+    in range 0 to 1 according to its absolute maximum.
 
-                min_lat = trigger_limits[j][0,0] - angle_margin
-                max_lat = trigger_limits[j][0,1] + angle_margin
+    Parameters
+    ----------
+    vector : array
+        Vector to normalize
 
-                min_lon = trigger_limits[j][0,2] - angle_margin
-                max_lon = trigger_limits[j][0,3] + angle_margin
+    Returns
+    -------
+    None. Same vector but normalized.
+    '''
+    
+    vector_max = max(vector)
+    vector_norm = [None]*len(vector)
+    for i in range(len(vector)):
+        vector_norm[i] = vector[i]/vector_max
+    return vector_norm
 
-                start_time = MMIA_filtered[j][0,0] - cropping_margin
-                end_time = MMIA_filtered[j][-1,0] + cropping_margin
+def signal_data_to_mat(mmia_raw, GLM_xcorr, MMIA_xcorr, delays, current_day, save_path):
+    
+    # Correct MMIA time on original signals
+    for j in range(len(mmia_raw)):
+        if type(delays[j]) == int: # Avoid None type delays (no xcorr was possible)
+            mmia_raw[j][:,0] = mmia_raw[j][:,0] + delays[j] * 0.002
+    
+    # Convert variables to final expected output
+    delays_t = np.array(delays)
+    for j in range(len(delays_t)):
+        if type(delays_t[j]) == np.int64: # Avoid None type delays (no xcorr was possible)
+            delays_t[j] = delays_t[j] * 0.002
+    
+    # Save variables into a .mat per event
+    for j in range(len(GLM_xcorr)):
+        if type(GLM_xcorr[j]) == np.ndarray:
+            # Create a dictionary of the variables to save
+            vars_to_save = {}
+            vars_to_save['corr_mmia_all'] = np.array(mmia_raw[j],dtype=object)
+            vars_to_save['GLM_xcorr'] = np.array(GLM_xcorr[j],dtype=object)
+            vars_to_save['MMIA_xcorr'] = np.array(MMIA_xcorr[j],dtype=object)
+            vars_to_save['delay_t'] = delays_t[j]
+            # Save the library into a MATLAB .mat binary file
+            sio.savemat(save_path + '/' + current_day + '_' + str(j) + '.mat', vars_to_save)
 
-                #start_time = trigger_limits[j][0,4] - cropping_margin
-                #end_time = trigger_limits[j][0,5] + cropping_margin
 
-                TFG.GLM_processing(dir_path+'/'+trigger_name+'/', output_path, trigger_name, min_lat, max_lat, min_lon, max_lon, start_time, end_time)
-                
-                print(' ')
-                print('Date %s event %d done\n' % (matches[current_day], j))
-        else:
-            print('GLM data for date %d event %d will not be extracted due to lack of MMIA data\n' % (int(matches[current_day]), j))
-
-    print('Your processed .txt files for day %s can be accessed at %s' % (matches[current_day], output_path))
-    print(' ')
+# Peak characterization and matching
 
 def get_GLM_MMIA_peaks(GLM_xcorr, MMIA_xcorr, GLM_xcorr_norm, MMIA_xcorr_norm, matches, show_plots, current_day, peaks_path, glm_min_peak_num, mmia_min_peak_num):
     '''
@@ -1624,42 +1784,8 @@ def get_peak_matches(GLM_xcorr, MMIA_xcorr, GLM_peaks, MMIA_peaks, show_plots, m
     
     return [common_peaks, common_peaks_values]
 
-def merge_days(matches, bin_path, filename_end_to_merge):
-    # La idea de la funcion es generar una matrix de datos independiente de
-    # los datos de la matrix (delays, numero de muestras...)
-    
-    # Para ello los datos deben ser guardados por dia en binarios de antemano!
-    
-    # Generation of the blank datatable
-    matrix = [None] * len(matches)
-    
-    # If there is just one possible name type in bin_path
-    if filename_end_to_merge == 'no_type':
-        with os.scandir(bin_path) as files:
-            files = [file.name for file in files if file.is_file() and file.name.endswith('.pckl')]
-    else: # Multiple namings in bin_path
-        with os.scandir(bin_path) as files:
-            files = [file.name for file in files if file.is_file() and file.name.endswith(filename_end_to_merge + '.pckl')]
-    
-    for i in range(len(files)):
-        
-        # Get positioning in 'matrix'
-        day = files[i][0:8]
-        pos_in_matches = matches.index(day)
-        
-        # Upload contents of the binary into 'matrix'
-        if filename_end_to_merge == 'no_type':
-            f = open(bin_path + '/' + day + '.pckl', 'rb')
-            day_info_vector = pickle.load(f)
-            f.close()
-        else: # Multiple namings in bin_path
-            f = open(bin_path + '/' + day + '_' + filename_end_to_merge + '.pckl', 'rb')
-            day_info_vector = pickle.load(f)
-            f.close()
-        
-        matrix[pos_in_matches] = day_info_vector
-    
-    return matrix
+
+# General statistics outputting
 
 def get_ministats(GLM_xcorr, MMIA_xcorr):
     
@@ -1677,7 +1803,7 @@ def get_ministats(GLM_xcorr, MMIA_xcorr):
             MMIA_std[j] = np.std(GLM_xcorr[j][:,1])
     
     return [GLM_avg, MMIA_avg, GLM_std, MMIA_std]
-    
+
 def study_delays(statistics_bin, show_plots, statistics_figures_path, matches, ssd_path, outputting_to_mat):
     '''
     This function computes the average delay of GLM with respect to MMIA,
@@ -2108,188 +2234,3 @@ def more_statistics(peaks_bin, matches, ssd_path, outputting_to_mat):
                 pos = pos+1
 
     outputting_to_mat['peak_relations'] = np.array(peak_relation,dtype=object)
-
-def integrate_signal_002(event, isGLM, begin, end):
-
-    new_length = math.ceil((end - begin) / 0.002)
-    int_data = np.zeros((new_length, 2))
-
-    for k in range(new_length): # For every sample accounting zeros at GLM rate
-        
-        # Fill time instance
-        int_data[k,0] = round(begin + k*0.002, 3)
-        
-        # Create windows of 0.002s and integrate their content
-        t_min = int_data[k,0]
-        t_max = t_min + 0.002
-        
-        # Check positions in the signal vector which are inside current window
-        window_indx = np.where(np.logical_and(event[:,0] >= t_min, event[:,0] < t_max))[0]
-        
-        if len(window_indx) == 0:
-            int_data[k,1] = 1e-11
-        
-        else: # Data inside this window exists
-            
-            if isGLM == True: # Event represents GLM signal
-                # Simply add values inside window
-                int_data[k,1] = sum(event[window_indx,1])
-                
-            else: # Event represents MMIA signal
-                # Trapezoid integration
-                int_data[k,1] = np.trapz(event[window_indx,1], x=event[window_indx,0])
-                
-    return int_data
-
-def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figures_path, glm_pix_size, cropping_margin):
-    
-    glm_tce = [None] * len(GLM_data)
-    mmia_tce = [None] * len(MMIA_filtered)
-    
-    for i in range(len(GLM_data)): # For every event
-    
-        if type(GLM_data[i]) == np.ndarray and type(MMIA_filtered[i]) == np.ndarray:
-            print('Converting instrumental signals to Top Cloud Energy for day %s event %d / %d' % (current_day, i, len(GLM_data)))
-            
-            # GLM
-            GLM_cloud_E = GLM_data[i]
-            GLM_cloud_E[:,1] = GLM_data[i][:,1] * 6611570247.933885 * glm_pix_size*1e6 #[J]
-            glm_tce[i] = integrate_signal_002(GLM_cloud_E, True, MMIA_filtered[i][0,0]-cropping_margin, MMIA_filtered[i][-1,0]+cropping_margin)
-            del GLM_cloud_E
-
-
-            # MMIA
-            # Computing the integral over MMIA signal
-            MMIA_cloud_E = integrate_signal_002(MMIA_filtered[i], False, MMIA_filtered[i][0,0]-cropping_margin, MMIA_filtered[i][-1,0]+cropping_margin) # [micro J/m^2]
-            MMIA_cloud_E[:,1] = MMIA_cloud_E[:,1]*1e-6*(math.pi)*(400e3**2) #(Van der Velde et al 2020), [J]
-            mmia_tce[i] = MMIA_cloud_E
-            del MMIA_cloud_E
-
-            if show_plots == True:
-                plt.figure(figsize=(10, 6))
-                figure_name = current_day + '_' + str(i)
-                plt.plot(glm_tce[i][:,0], glm_tce[i][:,1], color='black', linewidth=0.5)
-                plt.plot(mmia_tce[i][:,0], mmia_tce[i][:,1], color='red', linewidth=0.5)
-                plt.yscale('log')
-                plt.legend(['GLM','MMIA'])
-                plt.title('GLM (black) and MMIA (red) correlated signals converted to Top Cloud Energy for day %s event %d' % (current_day, i))
-                plt.xlabel('Time [s]')
-                plt.ylabel('Top Cloud Energy [J]')
-                plt.grid('on')
-                plt.savefig(tce_figures_path + '/' + figure_name + '_both.pdf')
-                #plt.show()
-                # Clear the current axes
-                plt.cla() 
-                # Clear the current figure
-                plt.clf() 
-                # Closes all the figure windows
-                plt.close('all')
-                
-                plt.figure(figsize=(10, 6))
-                figure_name = current_day + '_' + str(i)
-                plt.plot(glm_tce[i][:,0], glm_tce[i][:,1], color='black', linewidth=0.5)
-                plt.title('GLM correlated signal converted to Top Cloud Energy for day %s event %d' % (current_day, i))
-                plt.xlabel('Time [s]')
-                plt.ylabel('Top Cloud Energy [J]')
-                plt.grid('on')
-                plt.savefig(tce_figures_path + '/' + figure_name + '_glm.pdf')
-                #plt.show()
-                # Clear the current axes
-                plt.cla() 
-                # Clear the current figure
-                plt.clf() 
-                # Closes all the figure windows
-                plt.close('all')
-                
-                plt.figure(figsize=(10, 6))
-                figure_name = current_day + '_' + str(i)
-                plt.plot(mmia_tce[i][:,0], mmia_tce[i][:,1], color='red', linewidth=0.5)
-                plt.title('MMIA correlated signal converted to Top Cloud Energy for day %s event %d' % (current_day, i))
-                plt.xlabel('Time [s]')
-                plt.ylabel('Top Cloud Energy [J]')
-                plt.grid('on')
-                plt.savefig(tce_figures_path + '/' + figure_name + '_mmia.pdf')
-                #plt.show()
-                # Clear the current axes
-                plt.cla() 
-                # Clear the current figure
-                plt.clf() 
-                # Closes all the figure windows
-                plt.close('all')
-            
-        else:
-            print('Signals for day %s event %d could not be correlated, so no conversion is possible' % (current_day, i))
-    
-    return [glm_tce, mmia_tce]
-
-def split_MMIA_events(mmia_raw, event_limits, event_filenames_on_day, split_window):
-    
-    print('Looking for splittable events...')
-    for i in range(len(mmia_raw)):
-        
-        if type(mmia_raw[i]) == np.ndarray:
-        
-            event_times = mmia_raw[i][:,0]
-            
-            split_positions = []
-            
-            for j in range(1, len(event_times)):
-                if (event_times[j] - event_times[j-1]) >= split_window:
-                    split_positions.append(j)
-            
-            if len(split_positions) != 0:   # If there were time jumps
-                
-                if len(split_positions) == 1:
-                    
-                    current_mmia_raw_copy = mmia_raw[i]
-                    mmia_raw[i] = mmia_raw[i][0:split_positions[0]-2,:]
-                    mmia_raw.append(current_mmia_raw_copy[split_positions[0]+2:-1,:])
-                    event_limits.append(event_limits[i])
-                    event_filenames_on_day.append(event_filenames_on_day[i])
-                
-                else:
-                    
-                    current_mmia_raw_copy = mmia_raw[i]
-                    split_positions.append(-1)
-            
-                    for j in range(len(split_positions)):
-
-                        if j == 0:
-                            mmia_raw[i] = mmia_raw[i][0:split_positions[0]-2,:]
-                        elif j == (len(split_positions)-1):
-                            mmia_raw.append(current_mmia_raw_copy[split_positions[j-1]+2:-1,:])
-                            event_limits.append(event_limits[i])
-                            event_filenames_on_day.append(event_filenames_on_day[i])
-                        else:
-                            mmia_raw.append(current_mmia_raw_copy[split_positions[j-1]+2:split_positions[j]-2,:])
-                            event_limits.append(event_limits[i])
-                            event_filenames_on_day.append(event_filenames_on_day[i])
-        
-    print('Done!\n')
-    return [mmia_raw, event_limits, event_filenames_on_day]
-
-def signal_data_to_mat(mmia_raw, GLM_xcorr, MMIA_xcorr, delays, current_day, save_path):
-    
-    # Correct MMIA time on original signals
-    for j in range(len(mmia_raw)):
-        if type(delays[j]) == int: # Avoid None type delays (no xcorr was possible)
-            mmia_raw[j][:,0] = mmia_raw[j][:,0] + delays[j] * 0.002
-    
-    # Convert variables to final expected output
-    delays_t = np.array(delays)
-    for j in range(len(delays_t)):
-        if type(delays_t[j]) == np.int64: # Avoid None type delays (no xcorr was possible)
-            delays_t[j] = delays_t[j] * 0.002
-    
-    # Save variables into a .mat per event
-    for j in range(len(GLM_xcorr)):
-        if type(GLM_xcorr[j]) == np.ndarray:
-            # Create a dictionary of the variables to save
-            vars_to_save = {}
-            vars_to_save['corr_mmia_all'] = np.array(mmia_raw[j],dtype=object)
-            vars_to_save['GLM_xcorr'] = np.array(GLM_xcorr[j],dtype=object)
-            vars_to_save['MMIA_xcorr'] = np.array(MMIA_xcorr[j],dtype=object)
-            vars_to_save['delay_t'] = delays_t[j]
-            # Save the library into a MATLAB .mat binary file
-            sio.savemat(save_path + '/' + current_day + '_' + str(j) + '.mat', vars_to_save)
-    

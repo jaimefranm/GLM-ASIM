@@ -49,20 +49,22 @@ delete_non_important_directories = False
 #ssd_path = '/Users/jaimemorandominguez/Desktop/special_tests/jesus_results'
 #ssd_path = '/home/lrg/Desktop/jesus_cases/mmia_cdf/Colombia'
 #ssd_path = '/home/lrg/Desktop/testOutputtingStatsNoFilter'
-ssd_path = '/home/lrg/Desktop/tgfResults'
+#ssd_path = '/home/lrg/Desktop/tgfResults'
 #ssd_path = '/home/lrg/Desktop/USA'
+ssd_path = '/Users/jaimemorandominguez/Desktop/special_tests/jesus_results'
 
 # Path where MMIA's .cdf files are located
 #MMIA_files_path = '/Volumes/Jaime_F_HD/mmia_2020/mmia_20'
 #MMIA_files_path = '/Users/jaimemorandominguez/Desktop/special_tests/jesus'
 #MMIA_files_path = '/home/lrg/Desktop/jesus_cases/mmia_cdf/Colombia/interesting_2019'
 #MMIA_files_path = '/media/lrg/colombia_2020/mmia_20'
-MMIA_files_path = '/home/lrg/Desktop/tgfResults/tgfCases'
+#MMIA_files_path = '/home/lrg/Desktop/tgfResults/tgfCases'
 #MMIA_files_path = '/media/lrg/mmia_triggers_usa'
+MMIA_files_path = '/Users/jaimemorandominguez/Desktop/special_tests/jesus'
 
 # Path to MATLAB executable
-#matlab_path = '/Applications/MATLAB_R2022a.app/bin/matlab'
-matlab_path = '/usr/local/MATLAB/R2021b/bin/matlab'
+matlab_path = '/Applications/MATLAB_R2022a.app/bin/matlab'
+#matlab_path = '/usr/local/MATLAB/R2021b/bin/matlab'
 
 
 ### GLM ###
