@@ -28,7 +28,28 @@ import library as TFG
 
 # MMIA data extraction, upload and conditioning
 
-def get_MMIA_events(path_to_mmia_files, trigger_length):
+def get_MMIA_events(path_to_mmia_files, event_length):
+    '''
+    This function gets the MMIA .cdf files and separates them in events according
+    to their time specified in the name of the .cdf file.
+
+    Parameters
+    ----------
+    path_to_mmia_files : str
+        Path to where all MMIA .cdf files are located.
+    event_length : int, double
+        Maximum length (in seconds) to consider two files to be part of the same
+        event.
+
+    Returns
+    -------
+    matches : list
+        List containing all dates with existing MMIA data in the form YYMMDD.
+    event_info : list
+        List containing the names of all .cdf files that correspond to a single
+        event per position.
+
+    '''
 
     print('Generating events from MMIA files...')
     ######### Ordering MMIA files by name in ascending time #########
@@ -91,9 +112,9 @@ def get_MMIA_events(path_to_mmia_files, trigger_length):
 
     # Trigger characterization
 
-    trigger_info = []
+    event_info = []
     for i in range(len(matches)):
-        trigger_info.append([])
+        event_info.append([])
 
     day = datetime.datetime.strptime(str(mmia_data[0,1])[0:7], "%Y%j").strftime("%Y%m%d")
 
@@ -106,39 +127,80 @@ def get_MMIA_events(path_to_mmia_files, trigger_length):
 
         else:   #All of the rest of files
 
-            if mmia_data[i,1] - pivoting_time <= trigger_length:   # Same trigger
+            if mmia_data[i,1] - pivoting_time <= event_length:   # Same event
                 file_list.append(mmia_files[i])
                 day = datetime.datetime.strptime(str(mmia_data[i,1])[0:7], "%Y%j").strftime("%Y%m%d")
                 if i == (len(mmia_files)-1):
-                    trigger_info[matches.index(day)].append(file_list)
+                    event_info[matches.index(day)].append(file_list)
 
             else:   # New trigger
-                trigger_info[matches.index(day)].append(file_list)
+                event_info[matches.index(day)].append(file_list)
                 pivoting_time = mmia_data[i,1]
                 file_list = []
                 file_list.append(mmia_files[i])
                 day = datetime.datetime.strptime(str(mmia_data[i,1])[0:7], "%Y%j").strftime("%Y%m%d")
 
     print('Event generation done!\n')
-    return [matches, trigger_info]
+    return [matches, event_info]
 
-def create_MMIA_event_directories(matches, trigger_filenames, path_to_mmia_files, ssd_path):
+def create_MMIA_event_directories(matches, event_filenames, path_to_mmia_files, ssd_path):
+    '''
+    This function creates a directory in 'ssd_path/mmia_dirs' for every generated
+    MMIA event and drops the corresponding .cdf files in there.
 
+    Parameters
+    ----------
+    matches : list
+        List containing all dates with existing MMIA data in the form YYMMDD.
+    event_filenames : list
+        List containing the names of all .cdf files that correspond to a single
+        event per position.
+    path_to_mmia_files : str
+        Path to where all MMIA .cdf files are located.
+    ssd_path : str
+        Path to where all outputted data will be stored.
+
+    Returns
+    -------
+    None.
+
+    '''
+    
     print('Copying MMIA files into event directories...')
     os.system('mkdir ' + ssd_path + '/mmia_dirs')
-    for i in range(len(trigger_filenames)):
-        for j in range(len(trigger_filenames[i])):
+    for i in range(len(event_filenames)):
+        for j in range(len(event_filenames[i])):
             # Creating the trigger directory
             os.system('mkdir ' + ssd_path + '/mmia_dirs/' + matches[i] + '_' + str(j))
-            for k in range(len(trigger_filenames[i][j])):
-                file_name = trigger_filenames[i][j][k]
+            for k in range(len(event_filenames[i][j])):
+                file_name = event_filenames[i][j][k]
                 # Moving the current file to its trigger directory
                 os.system('cp ' + path_to_mmia_files + '/' + file_name + ' ' + ssd_path + '/mmia_dirs/' + matches[i] + '_' + str(j))
 
     print('MMIA classification done!\n')
 
 def extract_MMIA_event_info(path_to_mmia_dirs, mmia_mats_files_path, matlab_path):
+    '''
+    Function that extracts MMIA data from their .cdf files per event using the 
+    MATLAB script 'MMIA_extraction.m' developed by Jesús López.
 
+    Parameters
+    ----------
+    path_to_mmia_dirs : str
+        Path to where all pre-created MMIA event directories are located
+        ('ssd_path/mmia_dirs')
+    mmia_mats_files_path : str
+        Path to where all resulting .mat files from the extraction will be
+        located ('ssd_path/mmia_mat')
+    matlab_path : str
+        Path to where the MATLAB binary is located.
+
+    Returns
+    -------
+    None.
+
+    '''
+    
     # Extracting data for every trigger
 
     print('Starting MatLab and extracting data from .cdf files (this process can take a while)...')
@@ -160,7 +222,33 @@ def extract_MMIA_event_info(path_to_mmia_dirs, mmia_mats_files_path, matlab_path
     if len(files) == 0:
         print('No MMIA data could be extracted for any day!')
 
-def upload_MMIA_mats(ssd_path, trigger_filenames, matches, current_day):
+def upload_MMIA_mats(ssd_path, event_filenames, matches, current_day):
+    '''
+    This function uploads all MMIA .mat files that correspond to a same day
+    as a list in order to further analyze the signals.
+
+    Parameters
+    ----------
+    ssd_path : str
+        Path to where all outputted data will be stored.
+    event_filenames : list
+        List containing the names of all .cdf files that correspond to a single
+        event per position.
+    matches : list
+        List containing all dates with existing MMIA data in the form YYMMDD.
+    current_day : int
+        Current iteration day as the current index of 'matches'.
+
+    Returns
+    -------
+    mmia_raw : list
+        List of n positions representing n events for a single day with MMIA
+        data. Contains time vector and 3 photometer signals.
+    event_limits : list
+        List containing min and max times, latitudes and longitudes for every
+        event.
+
+    '''
 
     mmia_mat_files_path = ssd_path + '/mmia_mat'
 
@@ -170,8 +258,8 @@ def upload_MMIA_mats(ssd_path, trigger_filenames, matches, current_day):
     with os.scandir(mmia_mat_files_path) as info_files:
         info_files = [file.name for file in info_files if file.is_file() and file.name.endswith('info.mat')]
 
-    trigger_limits = [None] * len(trigger_filenames[current_day])
-    mmia_raw = [None] * len(trigger_filenames[current_day])
+    event_limits = [None] * len(event_filenames[current_day])
+    mmia_raw = [None] * len(event_filenames[current_day])
 
     for i in range(len(data_files)):
 
@@ -193,11 +281,37 @@ def upload_MMIA_mats(ssd_path, trigger_filenames, matches, current_day):
             current_data = data_mat.get('MMIA_all')
             current_info = info_mat.get('space_time')
             mmia_raw[int(data_trigger)] = current_data
-            trigger_limits[int(data_trigger)] = current_info
+            event_limits[int(data_trigger)] = current_info
 
-    return [mmia_raw, trigger_limits]
+    return [mmia_raw, event_limits]
 
 def split_MMIA_events(mmia_raw, event_limits, event_filenames_on_day, split_window):
+    '''
+    This function detects events that actually correspond to 2 or more events.
+    This can happen when more than 1 event fits inside 'event_length' seconds
+    (see function 'get_MMIA_events()')
+
+    Parameters
+    ----------
+    mmia_raw : list
+        List of n positions representing n events for a single day with MMIA
+        data. Contains time vector and 3 photometer signals.
+    event_limits : list
+        List containing min and max times, latitudes and longitudes for every
+        event.
+    event_filenames_on_day : list
+        Variable 'event_filenames' at position 'day' of the daily iterations of 
+        'matches'. That is, the names of the .cdf files that conform all events
+        for a single day ordered by event.
+    split_window : int, double
+        Minimum time of signal separation to consider as two different events.
+
+    Returns
+    -------
+    Updated 'mmia_raw', 'event_limits' and 'event_filenames_on_day' variables
+    accounting for new events that may have been created (new positions).
+
+    '''
     
     print('Looking for splittable events...')
     for i in range(len(mmia_raw)):
@@ -244,10 +358,26 @@ def split_MMIA_events(mmia_raw, event_limits, event_filenames_on_day, split_wind
     return [mmia_raw, event_limits, event_filenames_on_day]
 
 def merge_days(matches, bin_path, filename_end_to_merge):
-    # La idea de la funcion es generar una matrix de datos independiente de
-    # los datos de la matrix (delays, numero de muestras...)
-    
-    # Para ello los datos deben ser guardados por dia en binarios de antemano!
+    '''
+    Auxiliary function to create a matrix of any daily-list type variable, where
+    every position corresponds to a single day.
+
+    Parameters
+    ----------
+    matches : list
+        List containing all dates with existing MMIA data in the form YYMMDD.
+    bin_path : str
+        Path to where the binaries for the selected variable to merge are located.
+    filename_end_to_merge : str
+        Possible values = ['no_type', str], for binaries special nomenclature.
+
+    Returns
+    -------
+    matrix : list
+        List of daily lists where every position corresponds to the selected
+        variable as lists of daily events.
+
+    '''
     
     # Generation of the blank datatable
     matrix = [None] * len(matches)
@@ -285,20 +415,24 @@ def condition_MMIA_data(MMIA_data, matches, show_plots, mmia_threshold, current_
     This functions takes 'MMIA_data', a list of MMIA tables of information
     and applies a filter in 777.4nm photometer information vector to reduce
     noise.
+    --> Revision: no longer filtering MMIA since introduction of TCE conversion.
     It also plots every signal with and without the filter applied
     if 'show_plots' is True.
 
     Parameters
     ----------
-    MMIA_data : list
-        List of MMIA tables of information.
+    mmia_data : list
+        List of n positions representing n events for a single day with MMIA
+        data. Contains time vector and 3 photometer signals.
     matches : list
-        List of common dates with GLM and MMIA data, as strings in the form
-        YearMonthDay.
-    window_size : int
-        Moving Average window size.
+        List containing all dates with existing MMIA data in the form YYMMDD.
     show_plots : bool
-        Boolean variable for plotting. Not ploting makes the program faster.
+        Boolean variable for plotting throughout the program.
+    mmia_threshold : double
+        Maximum value of MMIA signal to be considered noise. If all signal is
+        below this value, will be considered as just noise.
+    current_day : int
+        Current iteration day as the current index of 'matches'.
 
     Returns
     -------
@@ -370,7 +504,7 @@ def condition_MMIA_data(MMIA_data, matches, show_plots, mmia_threshold, current_
     print(' ')
     return MMIA_filtered
 
-def fit_vector_in_MMIA_timesteps(GLM_int_data, day, snippet, show_plots, is_MMIA):
+def fit_vector_in_MMIA_timesteps(GLM_int_data, day, event, show_plots, is_MMIA):
     '''
     This function takes a time and signal pair of vectors and accommodates it
     into MMIA timesteps of 0.00001s. Inexistent values in between are filled
@@ -379,11 +513,11 @@ def fit_vector_in_MMIA_timesteps(GLM_int_data, day, snippet, show_plots, is_MMIA
     Parameters
     ----------
     GLM_int_data : list
-        List of daily lists of data snippets. NOT necessarily GLM data.
-    day : int
-        Date of the form YearMonthDay.
-    snippet : int
-        Index of the current snippet to expand inside day "day".
+        Pair of time-signal vectors of an event. IMPORANT: NOT necessarily GLM data.
+    day : str
+        'matches[day]', where 'day' is the current daily iteration of 'matches'.
+    event : int
+        Index of the current event inside the daily vector of data.
     show_plots : bool
         Boolean variable for showing plots all through the program.
     is_MMIA : bool
@@ -392,15 +526,15 @@ def fit_vector_in_MMIA_timesteps(GLM_int_data, day, snippet, show_plots, is_MMIA
     Returns
     -------
     GLM_current_data : list
-        List of daily lists of snippets like "GLM_int_Data" input, but with
-        accomodation to 0.00001s timesteps done.
+        Pair of time-signal vectors of an event like "GLM_int_data" input, but with
+        accomodation to 0.00001s timesteps done. IMPORANT: NOT necessarily GLM data.
     '''
 
-    # Expanding snippet to fit missing MMIA timesteps to cross-correlate data
+    # Expanding event to fit missing MMIA timesteps to cross-correlate data
     if is_MMIA == 0:
-        print('Fitting GLM data in MMIA timesteps date %d snippet %d...' % (day,snippet))
+        print('Fitting GLM data in MMIA timesteps date %d event %d...' % (day,event))
     else:
-        print('Completing MMIA data in MMIA timesteps date %d snippet %d...' % (day,snippet))
+        print('Completing MMIA data in MMIA timesteps date %d event %d...' % (day,event))
 
     new_length = 1          # New length of the timestep-wise matrix
     acumulated_voids = 0    # Number of non-existing timesteps up to current line
@@ -454,7 +588,7 @@ def fit_vector_in_MMIA_timesteps(GLM_int_data, day, snippet, show_plots, is_MMIA
         # GLM time representation at MMIA sample rate
         plt.figure()
         plt.plot(GLM_current_data[:,0])
-        #plt.title('GLM Time vector of day %d snippet %d with 0.00001s period' % (day, snippet))
+        #plt.title('GLM Time vector of day %d event %d with 0.00001s period' % (day, event))
         plt.xlabel('Samples')
         plt.ylabel('Time [s]')
         plt.grid('on')
@@ -470,7 +604,7 @@ def fit_vector_in_MMIA_timesteps(GLM_int_data, day, snippet, show_plots, is_MMIA
         plt.figure()
         plt.plot(GLM_current_data[:,0],GLM_current_data[:,1], linewidth=0.5, color='black')
         plt.grid('on')
-        #plt.title('GLM signal of day %d snippet %d with MMIA sample rate (0.00001s)' % (day, snippet))
+        #plt.title('GLM signal of day %d event %d with MMIA sample rate (0.00001s)' % (day, event))
         plt.xlabel('Time (second of the day) [s]')
         plt.ylabel('Radiance [J]')
         plt.show()
@@ -481,7 +615,7 @@ def fit_vector_in_MMIA_timesteps(GLM_int_data, day, snippet, show_plots, is_MMIA
         # Closes all the figure windows
         plt.close('all')
 
-    print('Date %d snippet %d fit' % (day, snippet))
+    print('Date %d event %d fit' % (day, event))
     print(' ')
 
     return GLM_current_data
