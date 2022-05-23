@@ -264,4 +264,4 @@ As a matter of summary for making the script work properly for the first time:
 9. Execute `main.py`
 
 ### Flow Diagram for `main.py` <a name="flowchart"></a>
-![Basic flow diagram for the `main.py` script](code_chart.pdf)
+![Basic flow diagram for the `main.py` script](https://github.com/jaimefranm/GLM-ASIM/blob/master/code_chart.pdf)
