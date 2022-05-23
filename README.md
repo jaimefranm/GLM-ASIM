@@ -11,6 +11,7 @@
 	2. [Input Data](#input)
 	3. [Output Data](#output)
 	4. [First Execution Checklist](#checklist)
+	5. [Flow Diagram for `main.py`](#flowchart)
 
 ## Overview <a name="overview"></a>
 This program compares GLM to MMIA signal based on input MMIA triggers as \textit{.cdf} files. As main points, this program automatically gets:
@@ -240,6 +241,12 @@ At the conclusion of the execution, some useful information remains storaged in 
 * All GLM and MMIA peaks as well as their matching peaks and their representation in plots, per event
 * Some basic statistics (including the most important variables for further statistical studies in a *.mat* format)
 
+Giving special attention to the output *.mat* file called `vars_for_stats.mat`, where all important results can be found, its fields represent:
+
+* `all_delays_t`: A vector containing all MMIA delays in seconds for every correlated event (MMIA was not noise-only and MMIA and GLM files contained data). *Positive values show GLM coming after MMIA, and negative values show GLM coming before MMIA signal*.
+* `glm_mmia_matching_time_signal`: Four vectors (1st and 2nd for GLM, 3rd and 4th for MMIA) containing time (in seconds) and the signal peak value (in joules, after TCE conversion) of all matching peaks. Every row represents a different matching peak with time and signal values for GLM and the same for MMIA.
+* `matching_time_distribution`: Twelve position vector counting the number of matching peaks for every 2-hour time segment of the day.
+* `peak_relations`: Two vectors, where every row represents a correlated event with a minimum of *glm_min_peak_num* peaks for GLM and `mmia_min_peak_num` peaks for MMIA. First column represents the relation between matching peaks over all GLM peaks for that row-event, and the second column represents the same over all MMIA peaks for that event.
 
 ### First Execution Checklist <a name="checklist"></a>
 
@@ -255,3 +262,6 @@ As a matter of summary for making the script work properly for the first time:
 7. Create a directory where all results will be outputted
 8. Enter `main.py` and define paths to directories and to MATLAB binary, as well as all input variables
 9. Execute `main.py`
+
+### Flow Diagram for `main.py` <a name="flowchart"></a>
+![Basic flow diagram for the `main.py` script](code_chart.pdf)
