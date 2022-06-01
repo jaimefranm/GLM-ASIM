@@ -623,7 +623,31 @@ def fit_vector_in_MMIA_timesteps(GLM_int_data, day, event, show_plots, is_MMIA):
 
 # GLM data download, extraction, upload and conditioning
 
-def download_GLM(ssd_path, trigger_filenames, MMIA_filtered, matches, current_day):
+def download_GLM(ssd_path, event_filenames, MMIA_filtered, matches, current_day):
+    '''
+    This function sets the variables for downloading GLM .nc files directly
+    from the Google Cloud Storage servers.
+
+    Parameters
+    ----------
+    ssd_path : str
+        Path to where all outputted data will be stored.
+    event_filenames : list
+        List containing the names of all .cdf files that correspond to a single
+        event per position.
+    MMIA_filtered : list
+        A list of MMIA tables of information with a filter applied
+        and only regarding time and 777.4nm photometer information
+    matches : list
+        List containing all dates with existing MMIA data in the form YYMMDD.
+    current_day : int
+        Current iteration day as the current index of 'matches'.
+
+    Returns
+    -------
+    None. Downloaded GLM .nc files in 'ssd_path/glm_downl_nc_files'.
+
+    '''
 
     print("Downloading GLM's .nc files from Google Cloud Storage for day %s...\n" % matches[current_day])
 
@@ -632,12 +656,12 @@ def download_GLM(ssd_path, trigger_filenames, MMIA_filtered, matches, current_da
     if current_day == 0:
         os.system('mkdir ' + path_to_downloaded_glm_nc)
 
-    for j in range(len(trigger_filenames[current_day])):
+    for j in range(len(event_filenames[current_day])):
         if type(MMIA_filtered[j]) == np.ndarray:
             current_trigger_download_path = path_to_downloaded_glm_nc + '/' + matches[current_day] + '_' + str(j)
             os.system('mkdir ' + current_trigger_download_path)
 
-            date = trigger_filenames[current_day][j][0][50:60]
+            date = event_filenames[current_day][j][0][50:60]
             year = date[0:4]
             day_year = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%j")
 
@@ -653,6 +677,29 @@ def download_GLM(ssd_path, trigger_filenames, MMIA_filtered, matches, current_da
     print(' ')
 
 def download_glm_from_google(ssd_path, year, day_year, t_ini, t_end):
+    '''
+    This function actually downloads GLM .nc files from Google Cloud Services
+    servers. It downloads the whole second of data (i.e. 3 files) as the minimum
+    time.
+
+    Parameters
+    ----------
+    ssd_path : str
+        Path to where all outputted data will be stored.
+    year : str
+        Year of the data willing to download.
+    day_year : str
+        Day of the year of the data willing to download (i.e. 1-365).
+    t_ini : double
+        First time of the corresponding MMIA signal for that event.
+    t_end : double
+        Last time of the corresponding MMIA signal for that event.
+
+    Returns
+    -------
+    None. Downloaded GLM .nc files in 'ssd_path/glm_downl_nc_files'.
+
+    '''
 
     hour_ini = str(int(t_ini // 3600))
     if len(hour_ini) == 1:
