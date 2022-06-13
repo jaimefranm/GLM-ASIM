@@ -681,6 +681,7 @@ def download_glm_from_google(ssd_path, year, day_year, t_ini, t_end):
     This function actually downloads GLM .nc files from Google Cloud Services
     servers. It downloads the whole second of data (i.e. 3 files) as the minimum
     time.
+    Modified from original by Jesús López.
 
     Parameters
     ----------
@@ -766,7 +767,7 @@ def download_glm_from_google(ssd_path, year, day_year, t_ini, t_end):
         blob.download_to_filename(destination_file_name)
         print("Blob {} downloaded to {}".format(file, destination_file_name))
 
-def extract_GLM(dir_path, output_path, trigger_limits, matches, MMIA_filtered, angle_margin, cropping_margin, current_day):
+def extract_GLM(dir_path, output_path, event_limits, matches, MMIA_filtered, angle_margin, cropping_margin, current_day):
     '''
     This function calls every directory with .nc files and extracts the data
     of all the files in it via GLM_processing function.
@@ -779,23 +780,26 @@ def extract_GLM(dir_path, output_path, trigger_limits, matches, MMIA_filtered, a
     output_path : string
         Path to the existing directory where the resulting daily .txt files
         will be located.
-    linet_times : list_to_events
-        List of daily lists of snippet info (time, geolocation and MMIA Id's)
+    event_limits : list
+        List containing min and max times, latitudes and longitudes for every
+        event.
     matches : list
-        List of dates with existing GLM and MMIA files
-    MMIA_MA : list
-        List of daily lists of MMIA's time and signal (with a filter
-        applied) vectors for every snippet
+        List containing all dates with existing MMIA data in the form YYMMDD.
+    MMIA_filtered : list
+        A list of MMIA tables of information with a filter applied
+        and only regarding time and 777.4nm photometer information
     angle_margin : float
         Plus of latitude and longitude angle for extracting GLM data with
-        respect to Linet's data.
+        respect to MMIA's data.
     cropping_margin : float
-        Plus of time before and afer MMIA snippet times (or Linet times) for
-         extracting GLM data.
+        Plus of time before and after MMIA event times for extracting GLM data.
+    current_day : int
+        Current iteration day as the current index of 'matches'.
 
     Returns
     -------
-    .txt files for every snippet with GLM data prepared to be analyzed.
+    .txt files for every event with GLM data prepared to be analyzed.
+
     '''
 
     print('Extracting data from GLM .nc files into event .txt...')
@@ -805,9 +809,9 @@ def extract_GLM(dir_path, output_path, trigger_limits, matches, MMIA_filtered, a
         # Creating a directory to store all resulting .txt
         os.system('mkdir ' + output_path)
     
-    for j in range(len(trigger_limits)):  # Analyzing each directory's .nc files
+    for j in range(len(event_limits)):  # Analyzing each directory's .nc files
 
-        if type(MMIA_filtered[j]) == np.ndarray and type(trigger_limits[j]) == np.ndarray:
+        if type(MMIA_filtered[j]) == np.ndarray and type(event_limits[j]) == np.ndarray:
 
             print('Extracting GLM data for date %d event %d...' % (int(matches[current_day]), j))
             
@@ -821,17 +825,17 @@ def extract_GLM(dir_path, output_path, trigger_limits, matches, MMIA_filtered, a
                 print('No GLM .nc files could be downloaded for day %s, event %d\n' % (matches[current_day], j))
             else:
 
-                min_lat = trigger_limits[j][0,0] - angle_margin
-                max_lat = trigger_limits[j][0,1] + angle_margin
+                min_lat = event_limits[j][0,0] - angle_margin
+                max_lat = event_limits[j][0,1] + angle_margin
 
-                min_lon = trigger_limits[j][0,2] - angle_margin
-                max_lon = trigger_limits[j][0,3] + angle_margin
+                min_lon = event_limits[j][0,2] - angle_margin
+                max_lon = event_limits[j][0,3] + angle_margin
 
                 start_time = MMIA_filtered[j][0,0] - cropping_margin
                 end_time = MMIA_filtered[j][-1,0] + cropping_margin
 
-                #start_time = trigger_limits[j][0,4] - cropping_margin
-                #end_time = trigger_limits[j][0,5] + cropping_margin
+                #start_time = event_limits[j][0,4] - cropping_margin
+                #end_time = event_limits[j][0,5] + cropping_margin
 
                 TFG.GLM_processing(dir_path+'/'+trigger_name+'/', output_path, trigger_name, min_lat, max_lat, min_lon, max_lon, start_time, end_time)
                 
@@ -844,6 +848,40 @@ def extract_GLM(dir_path, output_path, trigger_limits, matches, MMIA_filtered, a
     print(' ')
 
 def GLM_processing(read_path, save_path, name, min_lat, max_lat, min_lon, max_lon, begin, end):
+    '''
+    This function takes a directory with GLM .nc files and extracts their
+    important data inside space and time windows into a .txt file.
+    Modified from original by Jesús López.
+
+    Parameters
+    ----------
+    read_path : str
+        Path to the directory with GLM .nc files for a single event
+    save_path : str
+        Path to the existing directory where the resulting daily .txt files
+        will be located.
+    name : str
+        Name for the generated .txt file (default is event date and number)
+    min_lat : float
+        Minimum latitude to take data from.
+    max_lat : float
+        Maximum latitude to take data from.
+    min_lon : float
+        Minimum longitude to take data from.
+    max_lon : float
+        Maximum longitude to take data from.
+    begin : float
+        Start second of the day to take data from (default MMIA signal starting
+                                                   time minus cropping_margin)
+    end : float
+        Final second of the day to take data from (default MMIA signal starting
+                                                   time plus cropping_margin)
+
+    Returns
+    -------
+    .txt files for every event with GLM data prepared to be analyzed.
+
+    '''
 
     length=len([f for f in os.listdir(read_path) if os.path.isfile(os.path.join(read_path, f))])
     files=os.listdir(read_path); 
@@ -939,26 +977,26 @@ def GLM_processing(read_path, save_path, name, min_lat, max_lat, min_lon, max_lo
 def unify_GLM_data(output_path, MMIA_filtered, matches, current_day):
     '''
     This function gets all the GLM's extracted data .txt files from the
-    directory output_path and creates and returns list GLM_raw_data.
+    directory output_path and creates and returns list GLM_raw_data as a variable.
 
     Parameters
     ----------
     output_path : string
         Path to the existing directory where the resulting daily .txt files
-        are located.
+        will be located.
     MMIA_filtered : list
-        List of daily lists of MMIA's time and signal (with a filter applied)
-        vectors for every event
+        A list of MMIA tables of information with a filter applied
+        and only regarding time and 777.4nm photometer information
     matches : list
-        List of dates with existing GLM and MMIA files
-    show_plots : bool
-        Boolean value for outputting plots all through the program.
+        List containing all dates with existing MMIA data in the form YYMMDD.
+    current_day : int
+        Current iteration day as the current index of 'matches'.
 
     Returns
     -------
     GLM_raw_data : list
-        A list of daily lists with all the information found in the .txt files,
-        ordered by snippets.
+        A list with all the data found in the .txt files, ordered by events for
+        a single day.
     '''
 
     print('Uploading GLM data from .txt files...')
@@ -1007,23 +1045,27 @@ def unify_GLM_data(output_path, MMIA_filtered, matches, current_day):
 
 def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
     '''
-    This function takes all the extracted data from GLM .txt files, integrates
-    it and fits it in MMIA sample rate (0.002s of GLM to 0.00001s of MMIA)
+    This function takes all the extracted data from GLM .txt files and prepares
+    it for further analysis, as well as filtering those events with not
+    enough data.
 
     Parameters
     ----------
     GLM_total_raw_data : list
-        List of daily GLM tables of data.
+        A list with all the data found in the .txt files, ordered by events for
+        a single day.
     matches : list
-        List of dates with existing GLM and MMIA files
+        List containing all dates with existing MMIA data in the form YYMMDD.
     show_plots : bool
-        Boolean variable for plotting. Not ploting makes the program faster.
+        Boolean variable for plotting throughout the program.
+    current_day : int
+        Current iteration day as the current index of 'matches'.
 
     Returns
     -------
     GLM_data : list
-        List of daily lists of snippets with integrated GLM radiance in MMIA
-        sample rate.
+        A list with all the conditioned data found in GLM_total_raw_data,
+        ordered by events for a single day.
     '''
 
     # Creating a new set of data
@@ -1124,6 +1166,38 @@ def condition_GLM_data(GLM_total_raw_data, matches, show_plots, current_day):
 # Conversion to Top Cloud Energy (TCE)
 
 def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figures_path, glm_pix_size, cropping_margin):
+    '''
+    This function takes all "raw" GLM and MMIA instrument data and applies a
+    conversion to Top Cloud Energy to the signals, as per Van der Velde et al,
+    2020.
+
+    Parameters
+    ----------
+    GLM_data : list
+        A list with all the conditioned data found in GLM_total_raw_data,
+        ordered by events for a single day.
+    MMIA_filtered : list
+        A list of MMIA tables of information with a filter applied
+        and only regarding time and 777.4nm photometer information
+    current_day : int
+        Current iteration day as the current index of 'matches'.
+    show_plots : bool
+        Boolean variable for plotting throughout the program.
+    tce_figures_path : str
+        Path to the directory where all TCE figures will be stored.
+    glm_pix_size : float
+        Size of the projection of a GLM pixel at the observation area [km^2]
+    cropping_margin : float
+        Plus of time before and after MMIA event times for extracting GLM data.
+
+    Returns
+    -------
+    glm_tce : list
+        List of TCE-converted GLM events for a single day
+    mmia_tce : list
+        List of TCE-converted MMIA events for a single day
+
+    '''
     
     glm_tce = [None] * len(GLM_data)
     mmia_tce = [None] * len(MMIA_filtered)
@@ -1205,6 +1279,29 @@ def top_cloud_energy(GLM_data, MMIA_filtered, current_day, show_plots, tce_figur
     return [glm_tce, mmia_tce]
 
 def integrate_signal_002(event, isGLM, begin, end):
+    '''
+    This function takes a pair of signal-time vectors and integrates the vector
+    in 0.002s windows as for help in TCE conversion.
+
+    Parameters
+    ----------
+    event : np matrix
+        n x 2 matrix where the first vector represents signal values and the
+        second represents time values for a GLM/MMIA event
+    isGLM : bool
+        Bool for selecting integration method for GLM or MMIA
+    begin : float
+        Starting integration time value.
+    end : float
+        Ending integration time value.
+
+    Returns
+    -------
+    int_data : TYPE
+        m x 2 matrix where the first vector represents TCE-converted signal
+        values and the second represents time values for a GLM/MMIA event
+
+    '''
 
     new_length = math.ceil((end - begin) / 0.002)
     int_data = np.zeros((new_length, 2))
@@ -1241,28 +1338,53 @@ def integrate_signal_002(event, isGLM, begin, end):
 
 def cross_correlate_GLM_MMIA(GLM_snippets, MMIA_snippets, GLM_norm, MMIA_norm, matches, show_plots, current_day, xcorr_figures, GLM_ordered_outputs, tfg, ssd_path):
     '''
-    This function gets snippets from GLM and MMIA and cross-correlates them
-    to syncronize the signals and compare peaks.
+    This function takes all GLM and MMIA event data for a single day and
+    iterates a cross-correlation method for computing MMIA delay and synchronize
+    both signals with GLM as a reference. Usual number of iterations is 1 for
+    similar signals.
 
     Parameters
     ----------
     GLM_snippets : list
-        List of daily lists of GLM snippets in LINET time.
+        List of TCE-converted GLM events for a single day
     MMIA_snippets : list
-        List of daily lists of MMIA snippets in LINET time.
+        List of TCE-converted MMIA events for a single day
+    GLM_norm : list
+        List of normalized TCE-converted GLM events for a single day
+    MMIA_norm : list
+        List of normalized TCE-converted MMIA events for a single day
     matches : list
-        List of existing GLM and MMIA dates.
+        List containing all dates with existing MMIA data in the form YYMMDD.
     show_plots : bool
-        Boolean variable for plotting. Not ploting makes the program faster.
+        Boolean variable for plotting throughout the program.
+    current_day : int
+        Current iteration day as the current index of 'matches'.
+    xcorr_figures : str
+        Path to the directory where all cross-correlation figures will be stored
+    GLM_ordered_outputs : str
+        Path to the existing directory where the resulting daily .txt files
+        will be located.
+    tfg : bool
+        Boolean variable for defining TFG events (outputs GLM .txt's that could
+                                                  be cross-correlated)
+    ssd_path : str
+        Path to where all outputted data will be stored.
 
     Returns
     -------
     GLM_xcorr : list
-        List of daily lists of synchronized GLM data.
+        List of TCE-converted cross-correlated GLM events for a single day
     MMIA_xcorr : list
-        List of daily lists of synchronized MMIA data.
+        List of TCE-converted cross-correlated MMIA events for a single day
+    GLM_xcorr_norm : list
+        List of normalized TCE-converted cross-correlated GLM events for a
+        single day
+    MMIA_xcorr_norm : list
+        List of normalized TCE-converted cross-correlated MMIA events for a
+        single day
     delays : list
-        List of daily lists of delay between GLM and MMIA signal per snippet.
+        List of MMIA delays for every event. Positive: MMIA anticipated GLM
+
     '''
 
     print('Starting cross-correlation of events and syncronization of signals...')
